@@ -2,7 +2,7 @@
 /**
  * UserAgent, Referrer and Cloudflare test suite.
  *
- * @package   SugarMill\Network
+ * @package   Sugar\Network
  * @copyright Copyright (c) 2026, ArrayPress Limited
  * @license   GPL-2.0-or-later
  * @since     1.0.0
@@ -10,15 +10,15 @@
 
 declare( strict_types=1 );
 
-namespace SugarMill\Network\Tests;
+namespace Sugar\Network\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use SugarMill\Network\ClientHints;
-use SugarMill\Network\Cloudflare;
-use SugarMill\Network\Referrer;
-use SugarMill\Network\TrustedProxies;
-use SugarMill\Network\UserAgent;
+use Sugar\Network\ClientHints;
+use Sugar\Network\Cloudflare;
+use Sugar\Network\Referrer;
+use Sugar\Network\TrustedProxies;
+use Sugar\Network\UserAgent;
 
 final class UserAgentTest extends TestCase {
 
