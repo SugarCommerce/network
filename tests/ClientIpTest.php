@@ -2,7 +2,7 @@
 /**
  * ClientIp, TrustedProxies and Cidr test suite.
  *
- * @package   Sugar\Network
+ * @package   SugarCommerce\Network
  * @copyright Copyright (c) 2026, ArrayPress Limited
  * @license   GPL-2.0-or-later
  * @since     1.0.0
@@ -10,14 +10,14 @@
 
 declare( strict_types=1 );
 
-namespace Sugar\Network\Tests;
+namespace SugarCommerce\Network\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Sugar\Network\Cidr;
-use Sugar\Network\ClientIp;
-use Sugar\Network\Ip;
-use Sugar\Network\TrustedProxies;
+use SugarCommerce\Network\Cidr;
+use SugarCommerce\Network\ClientIp;
+use SugarCommerce\Network\Ip;
+use SugarCommerce\Network\TrustedProxies;
 
 final class ClientIpTest extends TestCase {
 

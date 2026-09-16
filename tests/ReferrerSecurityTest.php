@@ -2,7 +2,7 @@
 /**
  * Referrer sanitisation.
  *
- * @package   Sugar\Network
+ * @package   SugarCommerce\Network
  * @copyright Copyright (c) 2026, ArrayPress Limited
  * @license   GPL-2.0-or-later
  * @since     1.0.0
@@ -10,11 +10,11 @@
 
 declare( strict_types=1 );
 
-namespace Sugar\Network\Tests;
+namespace SugarCommerce\Network\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Sugar\Network\Referrer;
+use SugarCommerce\Network\Referrer;
 
 /**
  * The `Referer` header and the UTM query parameters are attacker-controlled

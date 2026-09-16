@@ -2,7 +2,7 @@
 /**
  * Resolve the real client address behind proxies and CDNs.
  *
- * @package   Sugar\Network
+ * @package   SugarCommerce\Network
  * @copyright Copyright (c) 2026, ArrayPress Limited
  * @license   GPL-2.0-or-later
  * @since     1.0.0
@@ -10,7 +10,7 @@
 
 declare( strict_types=1 );
 
-namespace Sugar\Network;
+namespace SugarCommerce\Network;
 
 /**
  * Class ClientIp

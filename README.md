@@ -31,7 +31,7 @@ composer require sugarcommerce/network
 ## Client IP
 
 ```php
-use Sugar\Network\{ClientIp, TrustedProxies};
+use SugarCommerce\Network\{ClientIp, TrustedProxies};
 
 // Behind Cloudflare
 $resolver = new ClientIp( TrustedProxies::cloudflare() );
@@ -58,7 +58,7 @@ TrustedProxies::none()->using_headers( 'X-Real-IP' );
 ## Addresses
 
 ```php
-use Sugar\Network\{Cidr, Ip};
+use SugarCommerce\Network\{Cidr, Ip};
 
 Cidr::contains( '10.0.0.5', '10.0.0.0/8' );   // CIDR
 Cidr::contains_any( $ip, $ranges );
@@ -81,7 +81,7 @@ Ip::hash( $ip, $secret );                            // stable pseudonym
 ## User agents
 
 ```php
-use Sugar\Network\UserAgent;
+use SugarCommerce\Network\UserAgent;
 
 $agent = UserAgent::current();
 
@@ -105,7 +105,7 @@ Three things no user agent can tell you, whatever the library:
 For the first, use client hints:
 
 ```php
-use Sugar\Network\ClientHints;
+use SugarCommerce\Network\ClientHints;
 
 ClientHints::windows_version();   // '11' — needs the Accept-CH header
 ClientHints::is_mobile();
@@ -118,7 +118,7 @@ Client hints only arrive if you ask for them. Send `ClientHints::ACCEPT_CH` as t
 ## Attribution
 
 ```php
-use Sugar\Network\Referrer;
+use SugarCommerce\Network\Referrer;
 
 $source = Referrer::analyse( $_SERVER['HTTP_REFERER'] ?? '', $_GET );
 
@@ -138,7 +138,7 @@ Everything here is attacker-controlled, so everything here is sanitised. Only `h
 ## Cloudflare
 
 ```php
-use Sugar\Network\Cloudflare;
+use SugarCommerce\Network\Cloudflare;
 
 $cf = new Cloudflare();
 
