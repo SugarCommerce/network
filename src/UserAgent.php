@@ -160,6 +160,37 @@ final readonly class UserAgent {
 	);
 
 	/**
+	 * Command-line clients and HTTP libraries, by the token that starts
+	 * their user agent, and what to call each.
+	 *
+	 * Not crawlers: somebody running `curl` or a download manager against a
+	 * file they bought is using it, not indexing it. They still count as
+	 * not-a-browser for is_bot(); this is only so a log can say which.
+	 */
+	private const array TOOLS = array(
+		'curl'             => 'curl',
+		'Wget'             => 'Wget',
+		'aria2'            => 'aria2',
+		'python-requests'  => 'Python',
+		'python-urllib'    => 'Python',
+		'Python-urllib'    => 'Python',
+		'python-httpx'     => 'Python',
+		'aiohttp'          => 'Python',
+		'Go-http-client'   => 'Go',
+		'okhttp'           => 'OkHttp',
+		'axios'            => 'Node.js',
+		'node-fetch'       => 'Node.js',
+		'undici'           => 'Node.js',
+		'Java/'            => 'Java',
+		'Apache-HttpClient' => 'Java',
+		'libwww-perl'      => 'Perl',
+		'WindowsPowerShell' => 'PowerShell',
+		'PowerShell'       => 'PowerShell',
+		'Deno'             => 'Deno',
+		'Bun'              => 'Bun',
+	);
+
+	/**
 	 * The AI and LLM subset of {@see self::NAMED_BOTS}.
 	 */
 	private const array AI_BOTS = array(
@@ -436,6 +467,12 @@ final readonly class UserAgent {
 	 * @return string e.g. `Chrome 131 on macOS`, or `Unknown`.
 	 */
 	public static function describe( string $agent ): string {
+		$tool = self::tool( $agent );
+
+		if ( null !== $tool ) {
+			return $tool;
+		}
+
 		if ( self::is_bot( $agent ) ) {
 			return self::bot_name( $agent ) ?? 'Bot';
 		}
@@ -455,6 +492,33 @@ final readonly class UserAgent {
 			null !== $label                 => (string) $label,
 			default                         => (string) $os,
 		};
+	}
+
+	/**
+	 * The command-line client or HTTP library making the request, when it
+	 * is a recognised one.
+	 *
+	 * Matched at the start of the agent, where every one of these puts its
+	 * name. Anywhere in the string would call a browser "Java" for the
+	 * word appearing in a plugin list.
+	 *
+	 * @since 1.1.0
+	 *
+	 * @param string $agent User-agent string.
+	 *
+	 * @return string|null e.g. `curl`, `Python`, `Go`.
+	 */
+	public static function tool( string $agent ): ?string {
+		$agent = ltrim( $agent );
+
+		foreach ( self::TOOLS as $token => $name ) {
+			if ( 0 === strncasecmp( $agent, $token, strlen( $token ) ) ) {
+				return $name;
+			}
+		}
+
+		// PowerShell announces itself inside a Mozilla-shaped string.
+		return false !== stripos( $agent, 'WindowsPowerShell' ) ? 'PowerShell' : null;
 	}
 
 	/**

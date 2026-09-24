@@ -347,4 +347,24 @@ final class UserAgentTest extends TestCase {
 		$this->assertNull( $cf->country( $server ) );
 		$this->assertNull( $cf->ray_id( $server ) );
 	}
+
+	/* ─── tools (1.1.0) ───────────────────────────────────────────────── */
+
+	/**
+	 * A buyer fetching their file with curl is using it, and a download log
+	 * that says "Bot" tells a seller nothing about that.
+	 */
+	public function test_a_command_line_client_is_named_not_called_a_bot(): void {
+		$this->assertSame( 'curl', UserAgent::describe( 'curl/8.4.0' ) );
+		$this->assertSame( 'Wget', UserAgent::describe( 'Wget/1.21.4' ) );
+		$this->assertSame( 'Python', UserAgent::describe( 'python-requests/2.32.3' ) );
+		$this->assertSame( 'Go', UserAgent::describe( 'Go-http-client/2.0' ) );
+		$this->assertSame( 'PowerShell', UserAgent::describe( 'Mozilla/5.0 (Windows NT; Windows NT 10.0; en-GB) WindowsPowerShell/5.1.19041.4648' ) );
+		$this->assertTrue( UserAgent::is_bot( 'curl/8.4.0' ), 'Still not a browser.' );
+	}
+
+	public function test_a_browser_mentioning_a_tool_is_still_the_browser(): void {
+		$this->assertNull( UserAgent::tool( self::CHROME . ' curl/8' ) );
+		$this->assertSame( 'Chrome 131 on macOS', UserAgent::describe( self::CHROME ) );
+	}
 }
