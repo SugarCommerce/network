@@ -50,7 +50,7 @@ final readonly class ClientHints {
 	 * Each hint you request is more fingerprinting surface, so ask only
 	 * for what you will actually use.
 	 */
-	public const ACCEPT_CH = 'Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Arch';
+	public const string ACCEPT_CH = 'Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Arch';
 
 	/**
 	 * Whether this browser sends client hints at all.

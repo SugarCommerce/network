@@ -42,7 +42,7 @@ final readonly class Referrer {
 	/**
 	 * Search engines by domain fragment, with their query parameter.
 	 */
-	private const SEARCH_ENGINES = array(
+	private const array SEARCH_ENGINES = array(
 		'google.'         => array( 'Google', 'q' ),
 		'bing.com'        => array( 'Bing', 'q' ),
 		'duckduckgo.com'  => array( 'DuckDuckGo', 'q' ),
@@ -64,7 +64,7 @@ final readonly class Referrer {
 	/**
 	 * Social networks by domain fragment.
 	 */
-	private const SOCIAL_NETWORKS = array(
+	private const array SOCIAL_NETWORKS = array(
 		'facebook.com'   => 'Facebook',
 		'fb.com'         => 'Facebook',
 		'l.facebook.com' => 'Facebook',
@@ -97,7 +97,7 @@ final readonly class Referrer {
 	/**
 	 * Webmail hosts, which indicate an email click.
 	 */
-	private const EMAIL_HOSTS = array(
+	private const array EMAIL_HOSTS = array(
 		'mail.google.com', 'outlook.', 'mail.yahoo.', 'mail.proton', 'protonmail.',
 		'mail.aol.com', 'zoho.com', 'icloud.com', 'fastmail.com', 'hey.com',
 	);
@@ -114,9 +114,9 @@ final readonly class Referrer {
 	 * Browsers cap the header well below this; anything longer is a
 	 * padding attempt aimed at whatever column it lands in.
 	 */
-	private const MAX_URL_LENGTH = 2048;
+	private const int MAX_URL_LENGTH = 2048;
 
-	private const MEDIUM_CHANNELS = array(
+	private const array MEDIUM_CHANNELS = array(
 		'paid'   => array( 'cpc', 'ppc', 'paid', 'paidsearch', 'paid-search', 'display', 'banner' ),
 		'email'  => array( 'email', 'newsletter', 'e-mail' ),
 		'social' => array( 'social', 'social-network', 'social-media', 'sm' ),

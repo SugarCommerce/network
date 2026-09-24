@@ -35,7 +35,7 @@ final readonly class UserAgent {
 	 * the generic patterns carry negative lookaheads and must be tried
 	 * last.
 	 */
-	private const BROWSERS = array(
+	private const array BROWSERS = array(
 		// Electron applications.
 		'Electron'          => 'Electron\/([0-9.]+)',
 
@@ -90,7 +90,7 @@ final readonly class UserAgent {
 	 * been the iPadOS default since 13, so most iPad traffic arrives with
 	 * a macOS user agent and is indistinguishable from a laptop.
 	 */
-	private const OPERATING_SYSTEMS = array(
+	private const array OPERATING_SYSTEMS = array(
 		'iOS'          => 'iPhone OS ([0-9._]+)|iPad.*OS ([0-9._]+)|iPod.*OS ([0-9._]+)|CPU.*OS ([0-9._]+)',
 		'Android'      => 'Android ([0-9.]+)',
 		// Deliberately not "Windows 10" — see above. Reporting a version
@@ -111,7 +111,7 @@ final readonly class UserAgent {
 	 *
 	 * These are distinctive enough that a substring match is safe.
 	 */
-	private const NAMED_BOTS = array(
+	private const array NAMED_BOTS = array(
 		// Search engines.
 		'Googlebot', 'Google-InspectionTool', 'AdsBot-Google', 'Mediapartners-Google',
 		'bingbot', 'BingPreview', 'Baiduspider', 'DuckDuckBot', 'YandexBot', 'Slurp',
@@ -162,7 +162,7 @@ final readonly class UserAgent {
 	/**
 	 * The AI and LLM subset of {@see self::NAMED_BOTS}.
 	 */
-	private const AI_BOTS = array(
+	private const array AI_BOTS = array(
 		'GPTBot', 'ChatGPT-User', 'ChatGPT Agent', 'OAI-SearchBot', 'OpenAI', 'Operator',
 		'ClaudeBot', 'Claude-Web', 'Claude-User', 'Claude-SearchBot', 'Claude-Code', 'anthropic-ai',
 		'PerplexityBot', 'Perplexity-User',
@@ -186,7 +186,7 @@ final readonly class UserAgent {
 	 * decision about them is different — see
 	 * {@see self::is_ai_user_agent()}.
 	 */
-	private const AI_USER_AGENTS = array(
+	private const array AI_USER_AGENTS = array(
 		'ChatGPT-User', 'ChatGPT Agent', 'Claude-User', 'Perplexity-User',
 		'MistralAI-User', 'Kimi-User', 'DuckAssistBot', 'Manus-User',
 		'OAI-SearchBot', 'Claude-SearchBot',
@@ -195,7 +195,7 @@ final readonly class UserAgent {
 	/**
 	 * Phone-shaped devices.
 	 */
-	private const MOBILE_PATTERN = '/(?:iPhone|iPod|Android.*Mobile|Windows Phone|BlackBerry|Opera Mini|IEMobile)/i';
+	private const string MOBILE_PATTERN = '/(?:iPhone|iPod|Android.*Mobile|Windows Phone|BlackBerry|Opera Mini|IEMobile)/i';
 
 	/**
 	 * Tablet-shaped devices.
@@ -203,7 +203,7 @@ final readonly class UserAgent {
 	 * An Android tablet is identified by the ABSENCE of "Mobile", which
 	 * is one of the less helpful decisions in the platform.
 	 */
-	private const TABLET_PATTERN = '/(?:iPad|Android(?!.*Mobile)|Tablet|Kindle|Silk|PlayBook)/i';
+	private const string TABLET_PATTERN = '/(?:iPad|Android(?!.*Mobile)|Tablet|Kindle|Silk|PlayBook)/i';
 
 	/**
 	 * Generic crawler words, matched on word boundaries.
@@ -214,7 +214,7 @@ final readonly class UserAgent {
 	 * boundaries keeps `Foo bot/1.0` and `Foo-Bot` while releasing
 	 * `Cubot_NOTE_20`.
 	 */
-	private const GENERIC_BOT_WORDS = array(
+	private const array GENERIC_BOT_WORDS = array(
 		'bot', 'bots', 'spider', 'crawler', 'crawl', 'scraper', 'archiver',
 		'curl', 'wget', 'java', 'ruby', 'perl', 'php', 'python',
 	);

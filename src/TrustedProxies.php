@@ -167,6 +167,6 @@ final readonly class TrustedProxies {
 	 * @return self
 	 */
 	public function using_headers( string ...$headers ): self {
-		return new self( $this->ranges, $headers );
+		return clone( $this, array( 'headers' => $headers ) );
 	}
 }

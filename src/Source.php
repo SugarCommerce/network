@@ -24,7 +24,7 @@ final readonly class Source {
 	/**
 	 * Channels that represent a deliberately tagged campaign.
 	 */
-	private const CAMPAIGN_CHANNELS = array( 'campaign', 'paid' );
+	private const array CAMPAIGN_CHANNELS = array( 'campaign', 'paid' );
 
 	/**
 	 * @since 1.0.0
