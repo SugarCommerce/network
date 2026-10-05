@@ -121,6 +121,31 @@ final readonly class Ip {
 	}
 
 	/**
+	 * The anonymised network an address belongs to, in CIDR notation.
+	 *
+	 * What {@see self::anonymize()} keeps, said so a reader cannot take it
+	 * for an address: `203.0.113.0` looks like a host, `203.0.113.0/24`
+	 * says it is the 256 addresses it stands for. An address that is
+	 * already anonymised comes back the same.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $ip Address.
+	 *
+	 * @return string e.g. `203.0.113.0/24` or `2001:db8:85a3::/48`, or '' when
+	 *                the input is not an address.
+	 */
+	public static function anonymized_cidr( string $ip ): string {
+		$network = self::anonymize( $ip );
+
+		if ( '' === $network ) {
+			return '';
+		}
+
+		return $network . ( self::is_v6( $network ) ? '/48' : '/24' );
+	}
+
+	/**
 	 * A stable, non-reversible identifier for an address.
 	 *
 	 * For counting distinct visitors, or rate limiting, without keeping

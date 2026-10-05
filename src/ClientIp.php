@@ -124,7 +124,7 @@ final readonly class ClientIp {
 
 		foreach ( $parts as $part ) {
 			// Strip a port from `1.2.3.4:5678` or `[::1]:5678`.
-			$candidate = self::strip_port( $part );
+			$candidate = Host::without_port( $part );
 			$ip        = self::valid( $candidate );
 
 			if ( null === $ip ) {
@@ -139,33 +139,6 @@ final readonly class ClientIp {
 		}
 
 		return null;
-	}
-
-	/**
-	 * Remove a trailing port, handling bracketed IPv6.
-	 *
-	 * @since 1.0.0
-	 *
-	 * @param string $value Address, possibly with a port.
-	 *
-	 * @return string
-	 */
-	private static function strip_port( string $value ): string {
-		$value = trim( $value );
-
-		if ( str_starts_with( $value, '[' ) ) {
-			$close = strpos( $value, ']' );
-
-			return false === $close ? $value : substr( $value, 1, $close - 1 );
-		}
-
-		// A bare IPv6 address contains colons but no port, so only strip
-		// when there is exactly one colon.
-		if ( 1 === substr_count( $value, ':' ) ) {
-			return explode( ':', $value, 2 )[0];
-		}
-
-		return $value;
 	}
 
 	/**

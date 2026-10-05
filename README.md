@@ -13,7 +13,8 @@ The fix is not complicated, but it has to be done in the right order: trust the 
 - 🛡️ **Spoof-resistant client IP** — forwarding headers honoured only from trusted proxies.
 - ☁️ **Cloudflare-aware** — the published edge ranges, plus country, ray id and Tor detection.
 - 🎯 **CIDR matching** — IPv4 and IPv6, plus IPv4 wildcards and allowlist validation.
-- 🕵️ **GDPR anonymisation** — last octet or last 80 bits zeroed, or a keyed hash for a stable pseudonym.
+- 🕵️ **GDPR anonymisation** — last octet or last 80 bits zeroed, written as a CIDR if you like, or a keyed hash for a stable pseudonym.
+- 🏷️ **Hosts** — ports off bracketed IPv6, typed domains cleaned, subdomain checks on a label boundary.
 - 🤖 **Bot detection** — search crawlers, and the AI crawlers tracked by `ai.robots.txt`.
 - 📱 **Device and browser** — with the client hints needed for the things a user agent no longer tells you.
 - 📈 **Attribution** — referrer classification and UTM campaigns, sanitised for storage.
@@ -72,11 +73,29 @@ Ip::version( $ip );                                  // 4 or 6
 Ip::anonymize( '203.0.113.42' );                     // '203.0.113.0'
 Ip::anonymize( '2001:db8::1' );                      // '2001:db8::'
 Ip::hash( $ip, $secret );                            // stable pseudonym
+Ip::anonymized_cidr( '203.0.113.42' );               // '203.0.113.0/24'
 ```
 
 `anonymize()` is the GDPR-safe form to log — zeroing the last octet (or the last 80 bits) leaves you geography and rough network without an identifier.
 
+`anonymized_cidr()` is the same masking written as the network it stands for, so a log reader cannot take `203.0.113.0` for somebody's address.
+
 `hash()` is for when you need to count unique visitors without storing who they were. Keep the secret out of the database; with it, the mapping is reversible by brute force in seconds — the address space is small.
+
+## Hosts
+
+```php
+use SugarCommerce\Network\Host;
+
+Host::without_port( '[::1]:8080' );                 // '::1'
+Host::without_port( 'shop.example.com:8443' );      // 'shop.example.com'
+Host::normalize( 'https://Shop.Example.com/page' ); // 'shop.example.com'
+Host::normalize( '203.0.113.5' );                   // '' — not a domain
+Host::is_within( 'a.example.com', 'example.com' );  // true
+Host::is_within( 'evil-example.com', 'example.com' ); // false
+```
+
+`without_port()` handles bracketed IPv6, where stripping `:\d+$` leaves the brackets on, and leaves a bare IPv6 address alone, where it would eat the last group. `normalize()` is for a domain somebody typed — they paste URLs — and refuses IP addresses, single labels and anything DNS would not hold. `is_within()` compares on a label boundary.
 
 ## User agents
 
@@ -158,7 +177,7 @@ composer install
 composer test
 ```
 
-150 tests, 292 assertions — including every header-spoofing path, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
+183 tests, 337 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
 
 ## License
 
