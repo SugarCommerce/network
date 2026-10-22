@@ -62,6 +62,8 @@ final class BlocklistTest extends TestCase {
 	public function test_missing_or_invalid_parts_add_nothing(): void {
 		$this->assertSame( array( 'ip' => 'h:203.0.113.9' ), $this->rules()->keys( '203.0.113.9', null ) );
 		$this->assertSame( array( 'ip' => 'h:203.0.113.9' ), $this->rules()->keys( '203.0.113.9', 'not-an-email' ) );
+		$this->assertSame( array(), $this->rules()->keys( null, '@spam.example' ) );
+		$this->assertSame( array(), $this->rules()->keys( null, 'someone@' ) );
 		$this->assertSame( array(), $this->rules()->keys( 'unknown', '' ) );
 		$this->assertSame( array(), $this->rules()->keys( null ) );
 	}
@@ -93,5 +95,13 @@ final class BlocklistTest extends TestCase {
 
 	public function test_the_types_are_the_check_order(): void {
 		$this->assertSame( array( 'ip', 'email', 'email_domain' ), Blocklist::TYPES );
+	}
+
+	public function test_an_address_too_odd_to_store_is_still_looked_up(): void {
+		$this->assertSame(
+			array( 'email' => 'a..b@spam.example', 'email_domain' => '@spam.example' ),
+			$this->rules()->keys( null, ' A..B@Spam.Example ' )
+		);
+		$this->assertSame( '', $this->rules()->pattern( Blocklist::EMAIL, 'a..b@spam.example' ), 'but cannot be stored' );
 	}
 }

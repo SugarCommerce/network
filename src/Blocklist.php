@@ -103,8 +103,15 @@ final readonly class Blocklist {
 
 	/**
 	 * The entries a visitor would match, as type => stored pattern, in the
-	 * order to check them. An address or email that is missing or invalid
-	 * adds nothing.
+	 * order to check them.
+	 *
+	 * Lookups are lenient where entries are strict: what is stored was
+	 * validated, but what is checked is whatever arrived. An address too
+	 * odd to pass validation — `a..b@spam.example`, a legacy row — is still
+	 * looked up, lower-cased, and its domain still matches an
+	 * `email_domain` entry; refusing to look it up would let exactly the
+	 * strangest addresses through. A missing IP, an invalid one, or an email
+	 * without an `@` between two parts adds nothing.
 	 *
 	 * @since 1.5.0
 	 *
@@ -120,11 +127,13 @@ final readonly class Blocklist {
 			$keys[ self::IP ] = ( $this->ip_key )( trim( trim( $ip ), '[]' ) );
 		}
 
-		$email = null === $email ? '' : $this->email( $email );
+		$plain = null === $email ? '' : strtolower( trim( $email ) );
+		$at    = strrpos( $plain, '@' );
 
-		if ( '' !== $email ) {
-			$keys[ self::EMAIL ]  = $email;
-			$keys[ self::DOMAIN ] = strtolower( (string) strrchr( $email, '@' ) );
+		if ( false !== $at && $at > 0 && $at < strlen( $plain ) - 1 ) {
+			$stored               = $this->email( (string) $email );
+			$keys[ self::EMAIL ]  = '' !== $stored ? $stored : $plain;
+			$keys[ self::DOMAIN ] = substr( $plain, $at );
 		}
 
 		return array_filter( $keys, static fn( string $pattern ): bool => '' !== $pattern );

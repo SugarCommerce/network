@@ -116,7 +116,7 @@ foreach ( $rules->keys( $ip, $email ) as $type => $pattern ) {   // ip, then ema
 }
 ```
 
-Types are `ip`, `email` and `email_domain`. A domain entry matches that exact domain. Pass a second closure to store email addresses your own way.
+Types are `ip`, `email` and `email_domain`. A domain entry matches that exact domain. Entries are validated; lookups are not — an address too odd to store is still looked up, so its domain still matches. Pass a second closure to store email addresses your own way.
 
 ## User agents
 
@@ -199,7 +199,7 @@ composer install
 composer test
 ```
 
-239 tests, 441 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
+240 tests, 445 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
 
 ## License
 
