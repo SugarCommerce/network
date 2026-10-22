@@ -276,12 +276,33 @@ final readonly class UserAgent {
 	 */
 	public static function current( ?array $server = null ): string {
 		$server ??= $_SERVER;
-		$agent    = $server['HTTP_USER_AGENT'] ?? '';
-		$agent    = is_string( $agent ) ? trim( $agent ) : '';
 
+		return self::clean( $server['HTTP_USER_AGENT'] ?? null ) ?? '';
+	}
+
+	/**
+	 * A user-agent string ready to store: trimmed and capped, or null.
+	 *
+	 * For an agent that did not come from {@see current()} — passed in by a
+	 * caller, read from a queued job — so it is held to the same rules
+	 * before it reaches a log row or a column: trimmed, cut at 512
+	 * characters (never mid-character), and NULL rather than '' when there
+	 * is nothing, so "no agent" is one value in the database, not two.
+	 *
+	 *   $db->insert( 'visits', [ 'agent' => UserAgent::clean( $agent ?? UserAgent::current() ) ] );
+	 *
+	 * @since 1.4.0
+	 *
+	 * @param mixed $agent The agent, or anything that should have been one.
+	 *
+	 * @return string|null Null for a non-string, or one that is blank.
+	 */
+	public static function clean( mixed $agent ): ?string {
 		// Nothing legitimate is this long, and it ends up in log rows and
 		// database columns.
-		return mb_substr( $agent, 0, 512 );
+		$agent = is_string( $agent ) ? mb_substr( trim( $agent ), 0, self::MAX_LENGTH ) : '';
+
+		return '' === $agent ? null : $agent;
 	}
 
 	/* ─── Classification ────────────────────────────────────────────── */

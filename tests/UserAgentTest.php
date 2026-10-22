@@ -240,6 +240,21 @@ final class UserAgentTest extends TestCase {
 		$this->assertSame( '', UserAgent::current( array() ) );
 	}
 
+	public function test_clean_trims_caps_and_gives_null_for_nothing(): void {
+		$this->assertSame( 'Mozilla/5.0', UserAgent::clean( "  Mozilla/5.0 \t" ) );
+		$this->assertSame( 512, mb_strlen( (string) UserAgent::clean( str_repeat( 'é', 2000 ) ) ) );
+		$this->assertTrue( mb_check_encoding( (string) UserAgent::clean( str_repeat( 'é', 2000 ) ), 'UTF-8' ) );
+
+		foreach ( array( null, '', "   \n", array( 'x' ), 42 ) as $nothing ) {
+			$this->assertNull( UserAgent::clean( $nothing ), var_export( $nothing, true ) );
+		}
+	}
+
+	public function test_current_is_clean_or_empty(): void {
+		$this->assertSame( 'curl/8', UserAgent::current( array( 'HTTP_USER_AGENT' => ' curl/8 ' ) ) );
+		$this->assertSame( '', UserAgent::current( array( 'HTTP_USER_AGENT' => '   ' ) ) );
+	}
+
 	/* ─── Referrer ──────────────────────────────────────────────────── */
 
 	public function test_search_engines_are_classified(): void {

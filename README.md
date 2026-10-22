@@ -104,7 +104,8 @@ Host::is_within( 'evil-example.com', 'example.com' ); // false
 ```php
 use SugarCommerce\Network\UserAgent;
 
-$agent = UserAgent::current();
+$agent = UserAgent::current();      // trimmed, ≤512 characters, '' when absent
+UserAgent::clean( $passed_in );     // same rules for an agent from elsewhere; null when blank
 
 UserAgent::browser( $agent );        // 'Chrome'
 UserAgent::browser_version( $agent );
@@ -179,7 +180,7 @@ composer install
 composer test
 ```
 
-183 tests, 337 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
+220 tests, 416 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
 
 ## License
 
