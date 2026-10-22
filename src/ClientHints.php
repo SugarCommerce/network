@@ -53,18 +53,25 @@ final readonly class ClientHints {
 	public const string ACCEPT_CH = 'Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Arch';
 
 	/**
+	 * Most brand entries {@see self::brands()} returns.
+	 *
+	 * A browser sends three or four, one of them a decoy.
+	 *
+	 * @since 1.3.0
+	 */
+	private const int MAX_BRANDS = 8;
+
+	/**
 	 * Whether this browser sends client hints at all.
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return bool False for Firefox and Safari.
 	 */
 	public static function available( ?array $server = null ): bool {
-		$server ??= $_SERVER;
-
-		return '' !== trim( (string) ( $server['HTTP_SEC_CH_UA'] ?? '' ) );
+		return '' !== trim( self::raw( 'HTTP_SEC_CH_UA', $server ) );
 	}
 
 	/**
@@ -72,7 +79,7 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null e.g. `Windows`, `macOS`, `Android`.
 	 */
@@ -87,7 +94,7 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null
 	 */
@@ -104,7 +111,7 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null `Windows 11`, `Windows 10`, or null when the
 	 *                     hint is absent or the platform is not Windows.
@@ -137,13 +144,12 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return bool|null Null when the hint is absent.
 	 */
 	public static function is_mobile( ?array $server = null ): ?bool {
-		$server ??= $_SERVER;
-		$value    = trim( (string) ( $server['HTTP_SEC_CH_UA_MOBILE'] ?? '' ) );
+		$value = trim( self::raw( 'HTTP_SEC_CH_UA_MOBILE', $server ) );
 
 		return '' === $value ? null : '?1' === $value;
 	}
@@ -155,7 +161,7 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null e.g. `Pixel 8`.
 	 */
@@ -170,7 +176,7 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null e.g. `x86`, `arm`.
 	 */
@@ -185,15 +191,19 @@ final readonly class ClientHints {
 	 * which browsers inject so that code cannot assume a fixed list. They
 	 * are filtered out here.
 	 *
+	 * Names and versions get the same treatment as every other hint —
+	 * printable ASCII only, 64 characters at most — and no more than
+	 * {@see self::MAX_BRANDS} are kept, since the header is the client's
+	 * to pad.
+	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return array<string, string> Brand => version.
 	 */
 	public static function brands( ?array $server = null ): array {
-		$server ??= $_SERVER;
-		$raw      = trim( (string) ( $server['HTTP_SEC_CH_UA'] ?? '' ) );
+		$raw = trim( self::raw( 'HTTP_SEC_CH_UA', $server ) );
 
 		if ( '' === $raw ) {
 			return array();
@@ -207,14 +217,19 @@ final readonly class ClientHints {
 		}
 
 		foreach ( $matches as $match ) {
-			$brand = $match[1];
+			$brand   = self::printable( $match[1] );
+			$version = self::printable( $match[2] );
 
 			// Skip the intentionally-nonsensical padding entries.
-			if ( 1 === preg_match( '/not.?a.?brand/i', $brand ) ) {
+			if ( '' === $brand || 1 === preg_match( '/not.?a.?brand/i', $brand ) ) {
 				continue;
 			}
 
-			$brands[ $brand ] = $match[2];
+			$brands[ $brand ] = $version;
+
+			if ( count( $brands ) >= self::MAX_BRANDS ) {
+				break;
+			}
 		}
 
 		return $brands;
@@ -229,16 +244,45 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string                    $key    `$_SERVER` key.
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param string            $key    `$_SERVER` key.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null
 	 */
 	private static function header( string $key, ?array $server ): ?string {
-		$server ??= $_SERVER;
-		$value    = trim( (string) ( $server[ $key ] ?? '' ), " \t\"" );
-		$value    = (string) preg_replace( '/[^\x20-\x7E]/', '', $value );
+		$value = self::printable( trim( self::raw( $key, $server ), " \t\"" ) );
 
-		return '' === $value ? null : mb_substr( $value, 0, 64 );
+		return '' === $value ? null : $value;
+	}
+
+	/**
+	 * Printable ASCII only, capped at 64 characters.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $value Raw value.
+	 *
+	 * @return string
+	 */
+	private static function printable( string $value ): string {
+		return substr( (string) preg_replace( '/[^\x20-\x7E]/', '', $value ), 0, 64 );
+	}
+
+	/**
+	 * A `$_SERVER` entry as a string, unvalidated.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string            $key    `$_SERVER` key.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array. Null uses
+	 *                                  the superglobal.
+	 *
+	 * @return string The value, or '' when absent or not a string.
+	 */
+	private static function raw( string $key, ?array $server ): string {
+		$server ??= $_SERVER;
+		$value    = $server[ $key ] ?? '';
+
+		return is_string( $value ) ? $value : '';
 	}
 }

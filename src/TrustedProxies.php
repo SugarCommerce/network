@@ -31,6 +31,19 @@ namespace SugarCommerce\Network;
  *   $proxies = TrustedProxies::cloudflare();
  *   $ip      = ( new ClientIp( $proxies ) )->resolve();
  *
+ * Trusting the connection is half of it; the other half is which
+ * headers. A header is only as good as the proxy that wrote it, so list
+ * only headers **every** trusted proxy overwrites or appends to. A proxy
+ * that passes a header through untouched hands it to the client:
+ * `CF-Connecting-IP` arriving at your own nginx is whatever the caller
+ * typed, unless the request really came through Cloudflare first.
+ *
+ * `X-Forwarded-For` is the safe default because it is read from the
+ * right — every proxy in the chain appends the address it saw, so a
+ * chain of any length resolves correctly. `CF-Connecting-IP` and
+ * `X-Real-IP` are single values that only the last hop sets; they are
+ * right only when that last hop is the one that sets them.
+ *
  * Cloudflare's ranges change. Refresh them from
  * https://www.cloudflare.com/ips/ and pass your own list rather than
  * relying on the bundled snapshot indefinitely.
@@ -40,29 +53,51 @@ namespace SugarCommerce\Network;
 final readonly class TrustedProxies {
 
 	/**
+	 * The header every proxy appends to, and the only one trusted unless
+	 * you say otherwise.
+	 *
+	 * @since 1.3.0
+	 */
+	public const string FORWARDED_FOR = 'X-Forwarded-For';
+
+	/**
+	 * List the proxies, and the headers believed from them.
+	 *
+	 * Before 1.3.0 the default headers were `CF-Connecting-IP`,
+	 * `X-Forwarded-For` and `X-Real-IP`. With a range that was not
+	 * Cloudflare's, that let a client set `CF-Connecting-IP` and have your
+	 * own proxy pass it straight through; the default is now
+	 * `X-Forwarded-For` alone. Name others with {@see self::using_headers()}
+	 * when your proxy sets them.
+	 *
 	 * @since 1.0.0
 	 *
-	 * @param string[] $ranges  CIDR ranges, or bare addresses.
-	 * @param string[] $headers Forwarding headers to honour, in priority
-	 *                          order, once the connection is trusted.
+	 * @param list<string> $ranges  CIDR ranges, or bare addresses.
+	 * @param list<string> $headers Forwarding headers to honour, in priority
+	 *                              order, once the connection is trusted.
+	 *                              Each must be one every trusted proxy
+	 *                              overwrites or appends to.
 	 */
 	public function __construct(
 		public array $ranges = array(),
-		public array $headers = array( 'CF-Connecting-IP', 'X-Forwarded-For', 'X-Real-IP' ),
+		public array $headers = array( self::FORWARDED_FOR ),
 	) {}
 
 	/**
 	 * Trust nothing — use `REMOTE_ADDR` only.
 	 *
 	 * The correct setting when your application is reached directly, and
-	 * the safe default.
+	 * the safe default. With no ranges no header is ever read, so this
+	 * keeps `X-Forwarded-For` as its header: `none()->and_also( … )` is
+	 * then a working list for your own load balancer rather than one that
+	 * silently reads nothing.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return self
 	 */
 	public static function none(): self {
-		return new self( array(), array() );
+		return new self();
 	}
 
 	/**
@@ -73,9 +108,16 @@ final readonly class TrustedProxies {
 	 * Cloudflare's address rather than their own), which is the right way
 	 * round, but still wrong.
 	 *
+	 * `CF-Connecting-IP` is read only when the list is Cloudflare's alone,
+	 * because then the connection is from Cloudflare, which always
+	 * overwrites it. Add your own ranges — Cloudflare in front of your
+	 * load balancer — and the connection is from your balancer, which
+	 * passes the header through from whoever reached it, Cloudflare or
+	 * not; so only `X-Forwarded-For`, which both append to, is read.
+	 *
 	 * @since 1.0.0
 	 *
-	 * @param string[] $extra Additional ranges to trust.
+	 * @param array<string> $extra Additional ranges to trust.
 	 *
 	 * @return self
 	 */
@@ -106,9 +148,11 @@ final readonly class TrustedProxies {
 					'2a06:98c0::/29',
 					'2c0f:f248::/32',
 				),
-				$extra
+				array_values( $extra )
 			),
-			array( 'CF-Connecting-IP', 'X-Forwarded-For' )
+			array() === $extra
+				? array( 'CF-Connecting-IP', self::FORWARDED_FOR )
+				: array( self::FORWARDED_FOR )
 		);
 	}
 
@@ -147,6 +191,12 @@ final readonly class TrustedProxies {
 	/**
 	 * A copy with extra ranges trusted.
 	 *
+	 * The headers are kept as they are. If they include one only the
+	 * outermost proxy sets — `CF-Connecting-IP` from
+	 * {@see self::cloudflare()} — and the new range is a proxy behind it,
+	 * follow with `using_headers( TrustedProxies::FORWARDED_FOR )`, or
+	 * pass the ranges to `cloudflare()` instead, which does that for you.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string ...$ranges CIDR ranges.
@@ -154,7 +204,7 @@ final readonly class TrustedProxies {
 	 * @return self
 	 */
 	public function and_also( string ...$ranges ): self {
-		return new self( array_merge( $this->ranges, $ranges ), $this->headers );
+		return new self( array_merge( $this->ranges, array_values( $ranges ) ), $this->headers );
 	}
 
 	/**
@@ -167,6 +217,6 @@ final readonly class TrustedProxies {
 	 * @return self
 	 */
 	public function using_headers( string ...$headers ): self {
-		return clone( $this, array( 'headers' => $headers ) );
+		return clone( $this, array( 'headers' => array_values( $headers ) ) );
 	}
 }

@@ -97,8 +97,8 @@ final readonly class Cidr {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string   $ip     Address to test.
-	 * @param string[] $ranges CIDR ranges or bare addresses.
+	 * @param string        $ip     Address to test.
+	 * @param array<string> $ranges CIDR ranges or bare addresses.
 	 *
 	 * @return bool
 	 */
@@ -148,8 +148,10 @@ final readonly class Cidr {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string   $ip       Address to test.
-	 * @param string[] $patterns Addresses, ranges, or wildcards.
+	 * @param string       $ip       Address to test.
+	 * @param array<mixed> $patterns Addresses, ranges, or wildcards, as
+	 *                               stored — an entry that is not a
+	 *                               string is skipped.
 	 *
 	 * @return bool
 	 */
@@ -223,9 +225,11 @@ final readonly class Cidr {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string[]|string $patterns List, or newline/comma-separated text.
+	 * @param array<mixed>|string $patterns List, or newline/comma-separated
+	 *                                      text. An entry that is not a
+	 *                                      string is dropped.
 	 *
-	 * @return string[] Valid entries, de-duplicated and in order.
+	 * @return list<string> Valid entries, de-duplicated and in order.
 	 */
 	public static function filter_valid( array|string $patterns ): array {
 		if ( is_string( $patterns ) ) {

@@ -15,9 +15,48 @@ namespace SugarCommerce\Network;
 /**
  * Class Ip
  *
+ * Validation, family, "is this on the public internet?", and the two
+ * ways of keeping an address without keeping the person: a masked
+ * network, or a keyed hash.
+ *
  * @since 1.0.0
  */
 final readonly class Ip {
+
+	/**
+	 * Ranges that are not public unicast but which PHP's
+	 * `FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE` lets through.
+	 *
+	 * Carrier-grade NAT, the IETF protocol and documentation blocks,
+	 * benchmarking, multicast and the class E block for IPv4; for IPv6 the
+	 * discard prefix, the IETF protocol block (Teredo and ORCHID among it),
+	 * documentation, local-use NAT64 and multicast.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @var list<string>
+	 */
+	private const array NON_PUBLIC_RANGES = array(
+		'0.0.0.0/8',
+		'100.64.0.0/10',
+		'192.0.0.0/24',
+		'192.0.2.0/24',
+		'192.88.99.0/24',
+		'198.18.0.0/15',
+		'198.51.100.0/24',
+		'203.0.113.0/24',
+		'224.0.0.0/4',
+		'240.0.0.0/4',
+		'::/128',
+		'::1/128',
+		'100::/64',
+		'2001::/23',
+		'2001:db8::/32',
+		'64:ff9b:1::/48',
+		'fc00::/7',
+		'fe80::/10',
+		'ff00::/8',
+	);
 
 	/**
 	 * Whether the string is a valid IPv4 or IPv6 address.
@@ -61,6 +100,13 @@ final readonly class Ip {
 	/**
 	 * Whether the address is private, reserved, or loopback.
 	 *
+	 * IPv6 addresses that carry an IPv4 address inside them — IPv4-mapped
+	 * (`::ffff:0:0/96`), NAT64 (`64:ff9b::/96`) and 6to4 (`2002::/16`) —
+	 * are judged by the IPv4 address they carry. Without that,
+	 * `64:ff9b::7f00:1` is a public-looking spelling of 127.0.0.1 on any
+	 * network with a NAT64 gateway, and an allowlist built on this method
+	 * would let it through.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $ip Address.
@@ -75,12 +121,50 @@ final readonly class Ip {
 			return true;
 		}
 
+		$embedded = self::embedded_v4( $ip );
+
+		if ( null !== $embedded ) {
+			return self::is_private( $embedded );
+		}
+
 		if ( false === filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
 			return true;
 		}
 
-		// Carrier-grade NAT, absent from PHP's reserved set.
-		return Cidr::contains( $ip, '100.64.0.0/10' );
+		return Cidr::contains_any( $ip, self::NON_PUBLIC_RANGES );
+	}
+
+	/**
+	 * The IPv4 address an IPv6 transition address carries, if it is one.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $ip A valid address.
+	 *
+	 * @return string|null The IPv4 address, or null when the input is not
+	 *                     IPv4-mapped, NAT64 or 6to4.
+	 */
+	private static function embedded_v4( string $ip ): ?string {
+		$packed = @inet_pton( $ip );
+
+		if ( false === $packed || 16 !== strlen( $packed ) ) {
+			return null;
+		}
+
+		$v4 = match ( true ) {
+			str_starts_with( $packed, str_repeat( "\0", 10 ) . "\xFF\xFF" ) => substr( $packed, 12, 4 ),
+			str_starts_with( $packed, "\x00\x64\xFF\x9B" . str_repeat( "\0", 8 ) ) => substr( $packed, 12, 4 ),
+			str_starts_with( $packed, "\x20\x02" ) => substr( $packed, 2, 4 ),
+			default => null,
+		};
+
+		if ( null === $v4 ) {
+			return null;
+		}
+
+		$text = inet_ntop( $v4 );
+
+		return false === $text ? null : $text;
 	}
 
 	/**

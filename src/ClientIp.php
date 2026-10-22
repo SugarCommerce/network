@@ -43,6 +43,8 @@ namespace SugarCommerce\Network;
 final readonly class ClientIp {
 
 	/**
+	 * Configure which proxies are believed.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param TrustedProxies|null $proxies Proxies permitted to set
@@ -59,10 +61,9 @@ final readonly class ClientIp {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
-	 *                                          Null uses the superglobal —
-	 *                                          the parameter exists for
-	 *                                          testability.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array. Null
+	 *                                  uses the superglobal — the
+	 *                                  parameter exists for testability.
 	 *
 	 * @return string|null Validated address, or null when nothing usable
 	 *                     was present.
@@ -70,7 +71,7 @@ final readonly class ClientIp {
 	public function resolve( ?array $server = null ): ?string {
 		$server ??= $_SERVER;
 
-		$remote = self::valid( (string) ( $server['REMOTE_ADDR'] ?? '' ) );
+		$remote = self::valid( self::server_string( $server, 'REMOTE_ADDR' ) );
 
 		if ( null === $remote ) {
 			return null;
@@ -83,7 +84,7 @@ final readonly class ClientIp {
 		}
 
 		foreach ( $this->proxies->headers as $header ) {
-			$value = (string) ( $server[ self::server_key( $header ) ] ?? '' );
+			$value = self::server_string( $server, self::server_key( $header ) );
 
 			if ( '' === $value ) {
 				continue;
@@ -113,11 +114,18 @@ final readonly class ClientIp {
 	 * Taking the leftmost entry — which is what most implementations do —
 	 * takes the one value in the header the attacker fully controls.
 	 *
+	 * An entry that is not an address stops the walk rather than being
+	 * stepped over. A trusted proxy only ever appends a real address (or,
+	 * for some, `unknown`), so anything else marks where the trustworthy
+	 * part of the chain ends; skipping it would carry on into the part
+	 * the client wrote.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $value Raw header value.
 	 *
-	 * @return string|null
+	 * @return string|null The client address, or null when the chain held
+	 *                     nothing usable before an unparseable entry.
 	 */
 	private function from_header( string $value ): ?string {
 		$parts = array_reverse( array_map( 'trim', explode( ',', $value ) ) );
@@ -128,7 +136,7 @@ final readonly class ClientIp {
 			$ip        = self::valid( $candidate );
 
 			if ( null === $ip ) {
-				continue;
+				return null;
 			}
 
 			if ( null !== $this->proxies && $this->proxies->trusts( $ip ) ) {
@@ -142,7 +150,13 @@ final readonly class ClientIp {
 	}
 
 	/**
-	 * Validate an address.
+	 * Validate an address and put it in canonical form.
+	 *
+	 * Canonical so that one client is one string: `2001:DB8:0:0::1` and
+	 * `2001:db8::1` key the same rate-limit bucket. An IPv4-mapped IPv6
+	 * address (`::ffff:203.0.113.5`, which a dual-stack socket reports for
+	 * IPv4 clients) comes back as the IPv4 address it carries, so it
+	 * matches IPv4 proxy ranges and IPv4 blocklists.
 	 *
 	 * @since 1.0.0
 	 *
@@ -151,9 +165,41 @@ final readonly class ClientIp {
 	 * @return string|null Canonical address, or null.
 	 */
 	private static function valid( string $ip ): ?string {
-		$ip = trim( $ip, ' []' );
+		$ip = trim( $ip, " \t[]" );
 
-		return false !== filter_var( $ip, FILTER_VALIDATE_IP ) ? $ip : null;
+		if ( false === filter_var( $ip, FILTER_VALIDATE_IP ) ) {
+			return null;
+		}
+
+		$packed = inet_pton( $ip );
+
+		if ( false === $packed ) {
+			return null;
+		}
+
+		if ( 16 === strlen( $packed ) && str_starts_with( $packed, str_repeat( "\0", 10 ) . "\xFF\xFF" ) ) {
+			$packed = substr( $packed, 12 );
+		}
+
+		$canonical = inet_ntop( $packed );
+
+		return false === $canonical ? null : $canonical;
+	}
+
+	/**
+	 * A `$_SERVER` entry as a string.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param array<mixed> $server `$_SERVER`-shaped array.
+	 * @param string       $key    Entry to read.
+	 *
+	 * @return string The value, or '' when absent or not a string.
+	 */
+	private static function server_string( array $server, string $key ): string {
+		$value = $server[ $key ] ?? '';
+
+		return is_string( $value ) ? $value : '';
 	}
 
 	/**

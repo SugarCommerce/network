@@ -23,10 +23,14 @@ final readonly class Source {
 
 	/**
 	 * Channels that represent a deliberately tagged campaign.
+	 *
+	 * @since 1.0.0
 	 */
 	private const array CAMPAIGN_CHANNELS = array( 'campaign', 'paid' );
 
 	/**
+	 * Describe a source. Normally built by {@see Referrer::analyse()}.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param string $channel  `search`, `social`, `email`, `paid`,

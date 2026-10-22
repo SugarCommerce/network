@@ -250,6 +250,18 @@ final readonly class UserAgent {
 		'curl', 'wget', 'java', 'ruby', 'perl', 'php', 'python',
 	);
 
+	/**
+	 * Longest agent the pattern matchers look at, in bytes.
+	 *
+	 * Several browser patterns are `.*A.*B(?!.*C)`, which costs time in
+	 * proportion to a power of the input length when they fail. Real
+	 * agents are a few hundred bytes; a padded one sent to burn CPU is
+	 * cut here before any pattern sees it. Same cap as {@see self::current()}.
+	 *
+	 * @since 1.3.0
+	 */
+	private const int MAX_LENGTH = 512;
+
 	/* ─── Reading the request ───────────────────────────────────────── */
 
 	/**
@@ -257,14 +269,15 @@ final readonly class UserAgent {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
-	 *                                          Null uses the superglobal.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array. Null uses
+	 *                                  the superglobal.
 	 *
 	 * @return string Trimmed and length-capped; '' when absent.
 	 */
 	public static function current( ?array $server = null ): string {
 		$server ??= $_SERVER;
-		$agent    = trim( (string) ( $server['HTTP_USER_AGENT'] ?? '' ) );
+		$agent    = $server['HTTP_USER_AGENT'] ?? '';
+		$agent    = is_string( $agent ) ? trim( $agent ) : '';
 
 		// Nothing legitimate is this long, and it ends up in log rows and
 		// database columns.
@@ -296,6 +309,8 @@ final readonly class UserAgent {
 	 * @return string|null Null when unrecognised or unversioned.
 	 */
 	public static function browser_version( string $agent ): ?string {
+		$agent = self::clip( $agent );
+
 		foreach ( self::BROWSERS as $pattern ) {
 			if ( 1 === preg_match( '/' . $pattern . '/i', $agent, $m ) ) {
 				foreach ( array_slice( $m, 1 ) as $capture ) {
@@ -345,7 +360,7 @@ final readonly class UserAgent {
 			}
 		}
 
-		return 1 === preg_match( self::generic_bot_pattern(), $agent );
+		return 1 === preg_match( self::generic_bot_pattern(), self::clip( $agent ) );
 	}
 
 	/**
@@ -409,7 +424,7 @@ final readonly class UserAgent {
 			return false;
 		}
 
-		return 1 === preg_match( self::MOBILE_PATTERN, $agent );
+		return 1 === preg_match( self::MOBILE_PATTERN, self::clip( $agent ) );
 	}
 
 	/**
@@ -422,7 +437,7 @@ final readonly class UserAgent {
 	 * @return bool
 	 */
 	public static function is_tablet( string $agent ): bool {
-		return 1 === preg_match( self::TABLET_PATTERN, $agent );
+		return 1 === preg_match( self::TABLET_PATTERN, self::clip( $agent ) );
 	}
 
 	/**
@@ -553,6 +568,8 @@ final readonly class UserAgent {
 	 * @return string|null
 	 */
 	private static function first_match( string $agent, array $patterns ): ?string {
+		$agent = self::clip( $agent );
+
 		foreach ( $patterns as $name => $pattern ) {
 			if ( 1 === preg_match( '/' . $pattern . '/i', $agent ) ) {
 				return $name;
@@ -563,24 +580,31 @@ final readonly class UserAgent {
 	}
 
 	/**
-	 * The compiled word-boundary pattern for generic crawler terms.
+	 * The word-boundary pattern for generic crawler terms.
 	 *
-	 * Built once per process. The naive implementation recompiles an
-	 * alternation of every pattern on every call, which is measurable
-	 * when you classify a request per page view.
+	 * The same string every call, so PCRE compiles it once per process and
+	 * serves it from its cache after that.
 	 *
 	 * @since 1.0.0
 	 *
 	 * @return string
 	 */
 	private static function generic_bot_pattern(): string {
-		static $pattern = null;
+		$quoted = array_map( static fn( string $w ): string => preg_quote( $w, '/' ), self::GENERIC_BOT_WORDS );
 
-		if ( null === $pattern ) {
-			$quoted  = array_map( static fn( string $w ): string => preg_quote( $w, '/' ), self::GENERIC_BOT_WORDS );
-			$pattern = '/(?<![a-z0-9])(?:' . implode( '|', $quoted ) . ')(?![a-z0-9])/i';
-		}
+		return '/(?<![a-z0-9])(?:' . implode( '|', $quoted ) . ')(?![a-z0-9])/i';
+	}
 
-		return $pattern;
+	/**
+	 * The part of an agent the pattern matchers look at.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $agent User-agent string.
+	 *
+	 * @return string At most {@see self::MAX_LENGTH} bytes.
+	 */
+	private static function clip( string $agent ): string {
+		return strlen( $agent ) > self::MAX_LENGTH ? substr( $agent, 0, self::MAX_LENGTH ) : $agent;
 	}
 }

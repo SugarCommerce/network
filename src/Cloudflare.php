@@ -25,11 +25,19 @@ namespace SugarCommerce\Network;
  * that check means anyone can choose their own country, which matters
  * the moment it drives tax, pricing, or an embargo rule.
  *
+ * The check is on the connecting address, so give it Cloudflare's ranges
+ * and nothing else. A list that also trusts your own load balancer makes
+ * every request through that balancer "from Cloudflare", including ones
+ * that reached it some other way with their own `CF-IPCountry`. Put a
+ * balancer behind Cloudflare only if it accepts nothing but Cloudflare.
+ *
  * @since 1.0.0
  */
 final readonly class Cloudflare {
 
 	/**
+	 * Set where Cloudflare's headers are believed from.
+	 *
 	 * @since 1.0.0
 	 *
 	 * @param TrustedProxies|null $proxies Ranges the headers are believed
@@ -45,15 +53,15 @@ final readonly class Cloudflare {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return bool
 	 */
 	public function is_active( ?array $server = null ): bool {
 		$server ??= $_SERVER;
-		$remote   = (string) ( $server['REMOTE_ADDR'] ?? '' );
+		$remote   = $server['REMOTE_ADDR'] ?? '';
 
-		return $this->proxies()->trusts( $remote );
+		return is_string( $remote ) && $this->proxies()->trusts( $remote );
 	}
 
 	/**
@@ -61,7 +69,7 @@ final readonly class Cloudflare {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null Two-letter code, or null when unavailable or
 	 *                     untrusted. `XX` (unknown) and `T1` (Tor) are
@@ -85,7 +93,7 @@ final readonly class Cloudflare {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null
 	 */
@@ -104,7 +112,7 @@ final readonly class Cloudflare {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return bool
 	 */
@@ -113,26 +121,36 @@ final readonly class Cloudflare {
 	}
 
 	/**
-	 * The TLS version the visitor negotiated.
+	 * What `CF-Visitor` says the visitor connected with.
+	 *
+	 * The header is JSON. Cloudflare currently sends only the scheme
+	 * (`{"scheme":"https"}`), so that is what usually comes back; a `tls`
+	 * member, when present, is preferred. Either way the value is checked
+	 * to be a short token before it is returned.
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
-	 * @return string|null e.g. `TLSv1.3`.
+	 * @return string|null e.g. `https`, or `TLSv1.3` when Cloudflare names
+	 *                     the version; null when absent or malformed.
 	 */
 	public function tls_version( ?array $server = null ): ?string {
 		$value = $this->header( 'HTTP_CF_VISITOR', $server );
 
-		if ( null === $value ) {
+		if ( null === $value || strlen( $value ) > 256 ) {
 			return null;
 		}
 
-		$decoded = json_decode( $value, true );
+		$decoded = json_decode( $value, true, 2 );
 
-		return is_array( $decoded ) && isset( $decoded['scheme'] )
-			? (string) ( $decoded['tls'] ?? $decoded['scheme'] )
-			: null;
+		if ( ! is_array( $decoded ) || ! isset( $decoded['scheme'] ) ) {
+			return null;
+		}
+
+		$reported = $decoded['tls'] ?? $decoded['scheme'];
+
+		return is_string( $reported ) && 1 === preg_match( '/^[A-Za-z0-9.]{1,16}$/', $reported ) ? $reported : null;
 	}
 
 	/**
@@ -140,8 +158,8 @@ final readonly class Cloudflare {
 	 *
 	 * @since 1.0.0
 	 *
-	 * @param string                    $key    `$_SERVER` key.
-	 * @param array<string, mixed>|null $server `$_SERVER`-shaped array.
+	 * @param string            $key    `$_SERVER` key.
+	 * @param array<mixed>|null $server `$_SERVER`-shaped array.
 	 *
 	 * @return string|null
 	 */
@@ -152,7 +170,8 @@ final readonly class Cloudflare {
 			return null;
 		}
 
-		$value = trim( (string) ( $server[ $key ] ?? '' ) );
+		$value = $server[ $key ] ?? '';
+		$value = is_string( $value ) ? trim( $value ) : '';
 
 		return '' === $value ? null : $value;
 	}

@@ -94,18 +94,31 @@ final readonly class Host {
 	 * On a label boundary: `shop.example.com` is within `example.com`;
 	 * `evil-example.com` is not.
 	 *
+	 * The host must be made only of the characters a hostname or an IP
+	 * literal can hold. `parse_url()` will hand back
+	 * `evil.com\.example.com` as a host, and it ends with `.example.com`,
+	 * but a browser reads the backslash as a slash and goes to
+	 * `evil.com` — the classic way past a redirect allowlist. Anything
+	 * of that kind is refused rather than compared, so an
+	 * internationalised name must be given in its `xn--` form.
+	 *
 	 * @since 1.2.0
 	 *
 	 * @param string $host   Host, any case, with or without a port.
 	 * @param string $domain Domain, any case.
 	 *
-	 * @return bool False when either is empty.
+	 * @return bool False when either is empty, or the host is not a
+	 *              well-formed name or address.
 	 */
 	public static function is_within( string $host, string $domain ): bool {
 		$host   = rtrim( strtolower( self::without_port( $host ) ), '.' );
 		$domain = rtrim( strtolower( trim( $domain ) ), '.' );
 
 		if ( '' === $host || '' === $domain ) {
+			return false;
+		}
+
+		if ( 1 !== preg_match( '/^[a-z0-9_.-]+$/', $host ) && ! Ip::is_valid( $host ) ) {
 			return false;
 		}
 

@@ -41,8 +41,16 @@ final readonly class Referrer {
 
 	/**
 	 * Search engines by domain fragment, with their query parameter.
+	 *
+	 * A fragment matches from the start of a label: either a whole domain
+	 * (`bing.com`, matching `bing.com` and `www.bing.com`) or, ending in a
+	 * dot, a name under any suffix (`google.`, matching `google.co.uk`).
+	 * More specific fragments come first — Gemini lives under Google.
+	 *
+	 * @since 1.0.0
 	 */
 	private const array SEARCH_ENGINES = array(
+		'gemini.google.'  => array( 'Gemini', '' ),
 		'google.'         => array( 'Google', 'q' ),
 		'bing.com'        => array( 'Bing', 'q' ),
 		'duckduckgo.com'  => array( 'DuckDuckGo', 'q' ),
@@ -57,12 +65,14 @@ final readonly class Referrer {
 		'perplexity.ai'   => array( 'Perplexity', 'q' ),
 		'chatgpt.com'     => array( 'ChatGPT', '' ),
 		'claude.ai'       => array( 'Claude', '' ),
-		'gemini.google.'  => array( 'Gemini', '' ),
-		'copilot.micro'   => array( 'Copilot', '' ),
+		'copilot.microsoft.com' => array( 'Copilot', '' ),
 	);
 
 	/**
-	 * Social networks by domain fragment.
+	 * Social networks by domain fragment, matched as
+	 * {@see self::SEARCH_ENGINES} are.
+	 *
+	 * @since 1.0.0
 	 */
 	private const array SOCIAL_NETWORKS = array(
 		'facebook.com'   => 'Facebook',
@@ -95,27 +105,34 @@ final readonly class Referrer {
 	);
 
 	/**
-	 * Webmail hosts, which indicate an email click.
+	 * Webmail hosts, which indicate an email click, matched as
+	 * {@see self::SEARCH_ENGINES} are.
+	 *
+	 * @since 1.0.0
 	 */
 	private const array EMAIL_HOSTS = array(
-		'mail.google.com', 'outlook.', 'mail.yahoo.', 'mail.proton', 'protonmail.',
+		'mail.google.com', 'outlook.', 'mail.yahoo.', 'mail.proton.me', 'protonmail.',
 		'mail.aol.com', 'zoho.com', 'icloud.com', 'fastmail.com', 'hey.com',
 	);
+
+	/**
+	 * Longest referrer accepted.
+	 *
+	 * Browsers cap the header well below this; anything longer is a
+	 * padding attempt aimed at whatever column it lands in.
+	 *
+	 * @since 1.0.0
+	 */
+	private const int MAX_URL_LENGTH = 2048;
 
 	/**
 	 * `utm_medium` values, grouped by the channel they mean.
 	 *
 	 * Marketers write these by hand, so the same channel arrives spelled
 	 * several ways.
-	 */
-	/**
-	 * Longest referrer accepted.
 	 *
-	 * Browsers cap the header well below this; anything longer is a
-	 * padding attempt aimed at whatever column it lands in.
+	 * @since 1.0.0
 	 */
-	private const int MAX_URL_LENGTH = 2048;
-
 	private const array MEDIUM_CHANNELS = array(
 		'paid'   => array( 'cpc', 'ppc', 'paid', 'paidsearch', 'paid-search', 'display', 'banner' ),
 		'email'  => array( 'email', 'newsletter', 'e-mail' ),
@@ -157,19 +174,19 @@ final readonly class Referrer {
 		// contains "google.", and Gmail is an email click rather than a
 		// search. Same for outlook.live.com against Bing.
 		foreach ( self::EMAIL_HOSTS as $fragment ) {
-			if ( str_contains( $host, $fragment ) ) {
+			if ( self::host_has( $host, $fragment ) ) {
 				return new Source( 'email', 'Webmail', '', $referrer );
 			}
 		}
 
 		foreach ( self::SEARCH_ENGINES as $fragment => [ $name, $parameter ] ) {
-			if ( str_contains( $host, $fragment ) ) {
+			if ( self::host_has( $host, $fragment ) ) {
 				return new Source( 'search', $name, self::search_term( $referrer, $parameter ), $referrer );
 			}
 		}
 
 		foreach ( self::SOCIAL_NETWORKS as $fragment => $name ) {
-			if ( str_contains( $host, $fragment ) ) {
+			if ( self::host_has( $host, $fragment ) ) {
 				return new Source( 'social', $name, '', $referrer );
 			}
 		}
@@ -182,6 +199,11 @@ final readonly class Referrer {
 	 *
 	 * Internal navigation is not attribution, and counting it inflates
 	 * every referral figure you have.
+	 *
+	 * For analytics only. Hosts are compared by {@see self::root_domain()},
+	 * which is the last two labels, so `evil.co.uk` counts as internal to
+	 * `shop.co.uk`. Do not use this as a CSRF or redirect check; compare the
+	 * exact origin, or use {@see Host::is_within()}.
 	 *
 	 * @since 1.0.0
 	 *
@@ -231,6 +253,27 @@ final readonly class Referrer {
 		}
 
 		return new Source( $channel, '' !== $campaign ? $campaign : $source, $source, '', $medium );
+	}
+
+	/**
+	 * Whether a host contains a domain fragment, starting on a label.
+	 *
+	 * `t.co` is in `t.co` but not in `microsoft.com`; `x.com` is in
+	 * `www.x.com` but not in `dropbox.com`. A fragment that ends in a dot
+	 * may be followed by anything; one that does not must end the host or
+	 * a label.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $host     Lower-case hostname.
+	 * @param string $fragment Fragment from one of the lookup tables.
+	 *
+	 * @return bool
+	 */
+	private static function host_has( string $host, string $fragment ): bool {
+		$tail = str_ends_with( $fragment, '.' ) ? '' : '(?:\.|$)';
+
+		return 1 === preg_match( '/(?:^|\.)' . preg_quote( $fragment, '/' ) . $tail . '/', $host );
 	}
 
 	/**

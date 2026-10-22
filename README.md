@@ -51,8 +51,10 @@ The rule this enforces: a forwarding header is only read when `REMOTE_ADDR` is i
 ```php
 TrustedProxies::cloudflare( [ '10.0.0.0/8' ] );   // Cloudflare plus your own
 TrustedProxies::local();                          // RFC 1918 — development
-TrustedProxies::none()->using_headers( 'X-Real-IP' );
+TrustedProxies::none()->and_also( '10.0.0.5' )->using_headers( 'X-Real-IP' );
 ```
+
+Headers matter as much as ranges. Only `X-Forwarded-For` is read by default, walked from the right, because every proxy appends to it. `CF-Connecting-IP` and `X-Real-IP` are single values that only the last hop sets — your own nginx passes a client's `CF-Connecting-IP` straight through — so name one with `using_headers()` only when the proxy you trust overwrites it. `cloudflare()` reads `CF-Connecting-IP` while its list is Cloudflare's alone, and drops it once you add ranges of your own.
 
 **Set this to match your actual deployment.** Trusting every private range while sitting behind a CDN that does not strip headers is how the guard gets bypassed; trusting nothing while behind a load balancer means every visitor shares one IP.
 
