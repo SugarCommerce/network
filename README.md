@@ -99,6 +99,25 @@ Host::is_within( 'evil-example.com', 'example.com' ); // false
 
 `without_port()` handles bracketed IPv6, where stripping `:\d+$` leaves the brackets on, and leaves a bare IPv6 address alone, where it would eat the last group. `normalize()` is for a domain somebody typed — they paste URLs — and refuses IP addresses, single labels and anything DNS would not hold. `is_within()` compares on a label boundary.
 
+## Blocklists
+
+The rules a blocklist runs on, without the storage — so the add form, the command line and the check cannot drift apart.
+
+```php
+use SugarCommerce\Network\Blocklist;
+
+$rules = new Blocklist( fn( string $ip ): string => $hash->ip( $ip ) );   // how an address is stored
+
+$rules->pattern( 'email_domain', ' @Spam.Example ' );   // '@spam.example'; '' when not valid for its type
+$rules->pattern( 'ip', '203.0.113.9' );                 // the stored hash
+
+foreach ( $rules->keys( $ip, $email ) as $type => $pattern ) {   // ip, then email, then domain
+    // look up ( $type, $pattern )
+}
+```
+
+Types are `ip`, `email` and `email_domain`. A domain entry matches that exact domain. Pass a second closure to store email addresses your own way.
+
 ## User agents
 
 ```php
@@ -180,7 +199,7 @@ composer install
 composer test
 ```
 
-220 tests, 416 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
+239 tests, 441 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
 
 ## License
 
