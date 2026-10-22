@@ -16,6 +16,7 @@ namespace SugarCommerce\Network\Tests;
 
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use SugarCommerce\Network\Cidr;
 use SugarCommerce\Network\ClientHints;
 use SugarCommerce\Network\ClientIp;
 use SugarCommerce\Network\Cloudflare;
@@ -132,6 +133,29 @@ final class HardeningTest extends TestCase {
 		$this->assertSame( 'https', $cloudflare->tls_version( $server + array( 'HTTP_CF_VISITOR' => '{"scheme":"https"}' ) ) );
 		$this->assertNull( $cloudflare->tls_version( $server + array( 'HTTP_CF_VISITOR' => '{"scheme":"<script>"}' ) ) );
 		$this->assertNull( $cloudflare->tls_version( $server + array( 'HTTP_CF_VISITOR' => '{"scheme":"https","tls":["x"]}' ) ) );
+	}
+
+	/* ─── A newline on the end ──────────────────────────────────────── */
+
+	/**
+	 * `$` also matches just before a final newline. Each of these got past
+	 * a check anchored with it, by putting the newline somewhere a trim()
+	 * does not reach: before a trailing dot, after a slash, inside JSON.
+	 */
+	public function test_a_typed_domain_ending_in_a_newline_is_refused(): void {
+		$this->assertSame( '', Host::normalize( "shop.example.com\n." ) );
+	}
+
+	public function test_a_prefix_ending_in_a_newline_is_refused(): void {
+		$this->assertFalse( Cidr::is_valid( "10.0.0.0/8\n" ) );
+		$this->assertFalse( Cidr::contains( '10.1.2.3', "10.0.0.0/8\n" ) );
+		$this->assertTrue( Cidr::contains( '10.1.2.3', '10.0.0.0/8' ) );
+	}
+
+	public function test_cf_visitor_ending_in_a_newline_is_refused(): void {
+		$server = array( 'REMOTE_ADDR' => '104.16.0.1', 'HTTP_CF_VISITOR' => '{"scheme":"https\n"}' );
+
+		$this->assertNull( ( new Cloudflare() )->tls_version( $server ) );
 	}
 
 	/* ─── Private addresses ─────────────────────────────────────────── */

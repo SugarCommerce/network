@@ -61,7 +61,7 @@ final readonly class Cidr {
 			return false;
 		}
 
-		if ( 1 !== preg_match( '/^\d{1,3}$/', $prefix ) ) {
+		if ( 1 !== preg_match( '/^\d{1,3}$/D', $prefix ) ) {
 			return false;
 		}
 
@@ -250,7 +250,7 @@ final readonly class Cidr {
 			}
 
 			$ok = str_contains( $pattern, '*' )
-				? 1 === preg_match( '/^(?:\d{1,3}|\*)(?:\.(?:\d{1,3}|\*)){3}$/', $pattern )
+				? 1 === preg_match( '/^(?:\d{1,3}|\*)(?:\.(?:\d{1,3}|\*)){3}$/D', $pattern )
 				: self::is_valid( $pattern );
 
 			if ( $ok ) {
@@ -303,7 +303,7 @@ final readonly class Cidr {
 
 		$packed = @inet_pton( trim( $subnet, '[]' ) );
 
-		if ( false === $packed || 1 !== preg_match( '/^\d{1,3}$/', $prefix ) ) {
+		if ( false === $packed || 1 !== preg_match( '/^\d{1,3}$/D', $prefix ) ) {
 			return false;
 		}
 

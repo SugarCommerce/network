@@ -78,7 +78,7 @@ final readonly class Cloudflare {
 	public function country( ?array $server = null ): ?string {
 		$value = $this->header( 'HTTP_CF_IPCOUNTRY', $server );
 
-		if ( null === $value || 1 !== preg_match( '/^[A-Za-z0-9]{2}$/', $value ) ) {
+		if ( null === $value || 1 !== preg_match( '/^[A-Za-z0-9]{2}$/D', $value ) ) {
 			return null;
 		}
 
@@ -100,7 +100,7 @@ final readonly class Cloudflare {
 	public function ray_id( ?array $server = null ): ?string {
 		$value = $this->header( 'HTTP_CF_RAY', $server );
 
-		return ( null !== $value && 1 === preg_match( '/^[a-f0-9]{16}-[A-Z]{3}$/i', $value ) ) ? $value : null;
+		return ( null !== $value && 1 === preg_match( '/^[a-f0-9]{16}-[A-Z]{3}$/iD', $value ) ) ? $value : null;
 	}
 
 	/**
@@ -150,7 +150,7 @@ final readonly class Cloudflare {
 
 		$reported = $decoded['tls'] ?? $decoded['scheme'];
 
-		return is_string( $reported ) && 1 === preg_match( '/^[A-Za-z0-9.]{1,16}$/', $reported ) ? $reported : null;
+		return is_string( $reported ) && 1 === preg_match( '/^[A-Za-z0-9.]{1,16}$/D', $reported ) ? $reported : null;
 	}
 
 	/**

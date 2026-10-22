@@ -85,7 +85,7 @@ final readonly class Host {
 
 		$label = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
 
-		return 1 === preg_match( '/^(?:' . $label . '\.)+[a-z][a-z0-9-]{0,62}$/', $value ) && ! str_ends_with( $value, '-' ) ? $value : '';
+		return 1 === preg_match( '/^(?:' . $label . '\.)+[a-z][a-z0-9-]{0,62}$/D', $value ) && ! str_ends_with( $value, '-' ) ? $value : '';
 	}
 
 	/**
@@ -118,7 +118,7 @@ final readonly class Host {
 			return false;
 		}
 
-		if ( 1 !== preg_match( '/^[a-z0-9_.-]+$/', $host ) && ! Ip::is_valid( $host ) ) {
+		if ( 1 !== preg_match( '/^[a-z0-9_.-]+$/D', $host ) && ! Ip::is_valid( $host ) ) {
 			return false;
 		}
 
