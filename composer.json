@@ -1,6 +1,6 @@
 {
   "name": "sugarcommerce/network",
-  "version": "1.5.1",
+  "version": "1.6.0",
   "description": "Request-level network utilities: spoof-resistant client IP behind proxies and CDNs, CIDR matching, GDPR anonymisation, user-agent and bot detection, referrer and campaign attribution. Zero dependencies.",
   "type": "library",
   "license": "GPL-2.0-or-later",

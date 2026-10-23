@@ -98,4 +98,56 @@ final class HostTest extends TestCase {
 			'empty'                => array( '', '' ),
 		);
 	}
+
+	/* ─── Loopback ──────────────────────────────────────────────────── */
+
+	#[DataProvider( 'loopbacks' )]
+	public function test_loopback( string $host, bool $expected ): void {
+		$this->assertSame( $expected, Host::is_loopback( $host ) );
+	}
+
+	/** @return array<string, array{0: string, 1: bool}> */
+	public static function loopbacks(): array {
+		return array(
+			'localhost'                   => array( 'localhost', true ),
+			'localhost, any case'         => array( 'LocalHost', true ),
+			'localhost and port'          => array( 'localhost:8080', true ),
+			'whitespace'                  => array( ' localhost:8099 ', true ),
+			'a name under .localhost'     => array( 'app.localhost', true ),
+			'deeper under .localhost'     => array( 'a.b.localhost:3000', true ),
+			'v4 loopback'                 => array( '127.0.0.1', true ),
+			'v4 loopback and port'        => array( '127.0.0.1:8000', true ),
+			'all of 127/8'                => array( '127.255.0.9', true ),
+			'bracketed v6'                => array( '[::1]', true ),
+			'bracketed v6 and port'       => array( '[::1]:8080', true ),
+			'bare v6'                     => array( '::1', true ),
+			'v6 spelt long'               => array( '[0:0:0:0:0:0:0:1]', true ),
+			'v4 loopback mapped into v6'  => array( '[::ffff:127.0.0.1]:80', true ),
+			'highest port'                => array( 'localhost:65535', true ),
+			'somebody else\'s name'       => array( 'localhost.evil.example', false ),
+			'a name ending localhost'     => array( 'evillocalhost', false ),
+			'a v4-shaped name'            => array( '127.0.0.1.nip.io', false ),
+			'trailing dot'                => array( 'localhost.', false ),
+			'empty label'                 => array( '.localhost', false ),
+			'bad label'                   => array( '-x.localhost', false ),
+			'a port that is not one'      => array( 'localhost:abc', false ),
+			'an empty port'               => array( 'localhost:', false ),
+			'a port too high'             => array( '127.0.0.1:65536', false ),
+			'junk after the bracket'      => array( '[::1]x', false ),
+			'an unclosed bracket'         => array( '[::1', false ),
+			'a stray bracket'             => array( '127.0.0.1]', false ),
+			'v4 in brackets'              => array( '[127.0.0.1]', false ),
+			'shorthand v4'                => array( '127.1', false ),
+			'hex v4'                      => array( '0x7f.0.0.1', false ),
+			'another v4'                  => array( '128.0.0.1', false ),
+			'unspecified'                 => array( '0.0.0.0', false ),
+			'another v6'                  => array( '[::2]', false ),
+			'v6 unspecified'              => array( '::', false ),
+			'NAT64 spelling of 127.0.0.1' => array( '[64:ff9b::7f00:1]', false ),
+			'mapped, not loopback'        => array( '::ffff:10.0.0.1', false ),
+			'a public name'               => array( 'example.com', false ),
+			'empty'                       => array( '', false ),
+			'userinfo'                    => array( 'user@localhost', false ),
+		);
+	}
 }

@@ -14,7 +14,7 @@ The fix is not complicated, but it has to be done in the right order: trust the 
 - ☁️ **Cloudflare-aware** — the published edge ranges, plus country, ray id and Tor detection.
 - 🎯 **CIDR matching** — IPv4 and IPv6, plus IPv4 wildcards and allowlist validation.
 - 🕵️ **GDPR anonymisation** — last octet or last 80 bits zeroed, written as a CIDR if you like, or a keyed hash for a stable pseudonym.
-- 🏷️ **Hosts** — ports off bracketed IPv6, typed domains cleaned, subdomain checks on a label boundary.
+- 🏷️ **Hosts** — ports off bracketed IPv6, typed domains cleaned, subdomain checks on a label boundary, loopback hosts read whole.
 - 🤖 **Bot detection** — search crawlers, and the AI crawlers tracked by `ai.robots.txt`.
 - 📱 **Device and browser** — with the client hints needed for the things a user agent no longer tells you.
 - 📈 **Attribution** — referrer classification and UTM campaigns, sanitised for storage.
@@ -95,9 +95,14 @@ Host::normalize( 'https://Shop.Example.com/page' ); // 'shop.example.com'
 Host::normalize( '203.0.113.5' );                   // '' — not a domain
 Host::is_within( 'a.example.com', 'example.com' );  // true
 Host::is_within( 'evil-example.com', 'example.com' ); // false
+Host::is_loopback( '[::1]:8080' );                  // true
+Host::is_loopback( 'app.localhost:3000' );          // true
+Host::is_loopback( 'localhost.evil.example' );      // false
 ```
 
 `without_port()` handles bracketed IPv6, where stripping `:\d+$` leaves the brackets on, and leaves a bare IPv6 address alone, where it would eat the last group. `normalize()` is for a domain somebody typed — they paste URLs — and refuses IP addresses, single labels and anything DNS would not hold. `is_within()` compares on a label boundary.
+
+`is_loopback()` is for the conveniences that must stay on the developer's machine — a dev-only admin with no password, a plain-HTTP OAuth redirect to a native client. Loopback is `localhost` and any name under `.localhost` (RFC 6761), all of 127.0.0.0/8, and `::1` in any spelling, bracketed or bare, including IPv4 loopback mapped into IPv6. The whole value must be the host plus an optional numeric port, so `localhost.evil.example`, `127.0.0.1.nip.io` and `[::1]x` are not loopback; nor are NAT64 spellings of 127.0.0.1, shorthand IPv4 (`127.1`) or a trailing dot. It reads a name, not a connection: a Host header is whatever the client sent, so pair it with the connection's address where it gates anything.
 
 ## Blocklists
 
@@ -199,7 +204,7 @@ composer install
 composer test
 ```
 
-240 tests, 445 assertions — including every header-spoofing path, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
+279 tests, 484 assertions — including every header-spoofing path, loopback hosts and the names that only start like one, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
 
 ## License
 
