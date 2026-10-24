@@ -15,6 +15,7 @@ The fix is not complicated, but it has to be done in the right order: trust the 
 - 🎯 **CIDR matching** — IPv4 and IPv6, plus IPv4 wildcards and allowlist validation.
 - 🕵️ **GDPR anonymisation** — last octet or last 80 bits zeroed, written as a CIDR if you like, or a keyed hash for a stable pseudonym.
 - 🏷️ **Hosts** — ports off bracketed IPv6, typed domains cleaned, subdomain checks on a label boundary, loopback hosts read whole.
+- 🧾 **Visit records** — who downloaded, for a log: keyed hashes to count with, and a country, device and masked network to show.
 - 🤖 **Bot detection** — search crawlers, and the AI crawlers tracked by `ai.robots.txt`.
 - 📱 **Device and browser** — with the client hints needed for the things a user agent no longer tells you.
 - 📈 **Attribution** — referrer classification and UTM campaigns, sanitised for storage.
@@ -123,6 +124,26 @@ foreach ( $rules->keys( $ip, $email ) as $type => $pattern ) {   // ip, then ema
 
 Types are `ip`, `email` and `email_domain`. A domain entry matches that exact domain. Entries are validated; lookups are not — an address too odd to store is still looked up, so its domain still matches. Pass a second closure to store email addresses your own way.
 
+## Visits
+
+What a download log or audit trail keeps about a visitor, without keeping the person.
+
+```php
+use SugarCommerce\Network\{TrustedProxies, Visit};
+
+$visit = Visit::capture(
+    Visit::hmac( $secret ),             // or fn( string $v ): string => your keyed hash
+    TrustedProxies::cloudflare(),       // whose forwarding headers to believe
+    Visit::CLOUDFLARE_COUNTRY           // a country header, believed from those proxies only; '' for none
+);
+
+$visit->ip_hash;      // for COUNT(DISTINCT …) and spotting a shared link; '' when no address
+$visit->agent_hash;   // the trimmed, capped agent; '' when none was sent
+$visit->summary();    // [ 'country' => 'IE', 'device' => 'Chrome 131 on macOS', 'network' => '203.0.113.0' ]
+```
+
+The address is the one `ClientIp` resolves, canonical, so one IPv6 spelling is one hash. The country header is read only when the connection came from a trusted proxy, and only two letters survive — `XX` and Cloudflare's `T1` do not. No agent is a `null` device; one nothing recognises is `Unknown`. Render `network` with `Ip::anonymized_cidr()`.
+
 ## User agents
 
 ```php
@@ -204,7 +225,7 @@ composer install
 composer test
 ```
 
-279 tests, 484 assertions — including every header-spoofing path, loopback hosts and the names that only start like one, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
+320 tests, 556 assertions — including every header-spoofing path, visit records behind proxies and over IPv6, loopback hosts and the names that only start like one, ports on bracketed and bare IPv6 hosts, typed domains, label-boundary matching, IPv4-mapped and NAT64 addresses, the user-agent patterns verified against MDN and vendor documentation, and the referrer sanitisation cases.
 
 ## License
 
