@@ -252,6 +252,15 @@ Email::mask( 'patricia@example.com' );               // "p••@example.com"
 Email::clean( 'Jordan@EXAMPLE.COM' );                // "Jordan@example.com" -- the name's case is kept
 ```
 
+`parse()` agrees with WordPress's `is_email()`, so an address already stored
+reads back. At the door, where an address is about to be accepted, ask the
+stricter question -- no dot at either end of the name or two in a row, a
+top-level domain of letters, the RFC 5321 lengths:
+
+```php
+Email::is_valid( 'pat.@example.com' );               // false; is_email() says yes
+```
+
 `mask()` splits at the last `@` and hides how long the name is. For an admin
 list that should look like what it hides, and show whatever is stored when
 it is not an address:
@@ -354,7 +363,7 @@ which asks who connected rather than trusting a header anyone can send.
 
 This library is `wp-ip-utils`, `wp-user-agent-utils`, `wp-referrer-utils`,
 `wp-email-utils`, `wp-visitor-country`, `wp-accept-language-utils` and
-`wp-server-utils` in one. Every class keeps its name
+`wp-server-utils` in one, with `arraypress/email-validator`'s check in `Email`. Every class keeps its name
 and its methods, under `SugarCommerce\Network`:
 
 | Was | Now |
@@ -417,6 +426,8 @@ loaded first:
 | `get_referrer_search_terms( $url )` | `Referrer::get_search_terms( $url ) ?? ''` |
 | `parse_email( $email )` | `Email::parse( $email )` |
 | `sanitize_email_list( $input )` | `Email::sanitize_pattern_list( $input, true )` |
+| `is_valid_email( $email )` (arraypress/email-validator) | `Email::is_valid( $email )` |
+| `sanitize_email( $email )` (arraypress/email-validator) | WordPress's own `sanitize_email()` -- the old one stood in for it only where core was absent. Lower-cased and checked: `Email::sanitize_email( $email ) ?? ''` |
 | `get_accept_language()` | `AcceptLanguage::get_primary()` |
 | `get_preferred_language( $available, $fallback )` | `AcceptLanguage::get_best_match( $available, $fallback )` |
 | `accepts_language( $lang, $exact )` | `AcceptLanguage::accepts( $lang, $exact )` |

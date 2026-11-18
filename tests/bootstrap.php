@@ -372,7 +372,9 @@ if ( ! function_exists( 'is_email' ) ) {
 
 		[ $local, $domain ] = explode( '@', $email, 2 );
 
-		if ( '' === $local || preg_match( '/[^a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]/', $local ) ) {
+		// Anchored as core anchors it: $ also matches before a final line
+		// break, so core lets a name ending in one through.
+		if ( ! preg_match( '/^[a-zA-Z0-9!#$%&\'*+\/=?^_`{|}~\.-]+$/', $local ) ) {
 			return false;
 		}
 
@@ -387,7 +389,7 @@ if ( ! function_exists( 'is_email' ) ) {
 		}
 
 		foreach ( $subs as $sub ) {
-			if ( '' === trim( $sub, " \t\n\r\0\x0B-" ) || preg_match( '/[^a-z0-9-]/i', $sub ) ) {
+			if ( trim( $sub, " \t\n\r\0\x0B-" ) !== $sub || ! preg_match( '/^[a-z0-9-]+$/i', $sub ) ) {
 				return false;
 			}
 		}

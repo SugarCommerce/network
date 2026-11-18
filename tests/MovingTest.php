@@ -60,6 +60,7 @@ final class MovingTest extends TestCase {
 			'get_referrer_search_terms',
 			'parse_email',
 			'sanitize_email_list',
+			'is_valid_email',
 			'get_accept_language',
 			'get_preferred_language',
 			'accepts_language',
@@ -130,6 +131,18 @@ final class MovingTest extends TestCase {
 		$this->assertSame( 'pat@example.com', (string) Email::parse( ' Pat@Example.com ' ) );
 		$this->assertNull( Email::parse( 'nope' ) );
 		$this->assertIsString( Email::sanitize_pattern_list( "*@example.com\n", true ) );
+	}
+
+	/**
+	 * is_valid_email() and sanitize_email() from arraypress/email-validator.
+	 */
+	public function test_the_validator_helpers(): void {
+		$this->assertTrue( Email::is_valid( 'user+tag@gmail.com' ) );
+		$this->assertFalse( Email::is_valid( 'test@domain.123' ) );
+
+		// The old sanitize_email() lower-cased and gave '' for nothing.
+		$this->assertSame( 'test@example.com', Email::sanitize_email( '  TEST@EXAMPLE.COM  ' ) ?? '' );
+		$this->assertSame( '', Email::sanitize_email( 'invalid' ) ?? '' );
 	}
 
 	/**

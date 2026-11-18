@@ -216,6 +216,48 @@ trait Core {
 	}
 
 	/**
+	 * Whether a string is an address mail can actually be sent to.
+	 *
+	 * WordPress's is_email() first, then the rules it leaves out: at most
+	 * 254 characters, a name of at most 64, no dot at either end of the
+	 * name or two in a row, a top-level domain of two letters or more, and
+	 * no whitespace anywhere -- is_email() lets a name ending in a line
+	 * break through. Surrounding whitespace is ignored, as a form field's
+	 * would be.
+	 *
+	 * Stricter than {@see self::parse()}, which keeps is_email()'s answer
+	 * so an address WordPress already stored is still read back. Use this
+	 * one at the door, where an address is about to be accepted:
+	 *
+	 *     Email::is_valid( 'pat@example.com' );    // true
+	 *     Email::is_valid( 'pat.@example.com' );   // false -- is_email() says yes
+	 *     Email::is_valid( 'pat@example.123' );    // false -- no such top-level domain
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param string $email The address.
+	 *
+	 * @return bool True when it is one.
+	 */
+	public static function is_valid( string $email ): bool {
+		$email = trim( $email );
+
+		if ( strlen( $email ) > 254 || preg_match( '/\s/', $email ) || false === is_email( $email ) ) {
+			return false;
+		}
+
+		[ $local, $domain ] = explode( '@', $email, 2 );
+
+		if ( strlen( $local ) > 64 || str_starts_with( $local, '.' ) || str_ends_with( $local, '.' ) || str_contains( $local, '..' ) ) {
+			return false;
+		}
+
+		$tld = substr( (string) strrchr( $domain, '.' ), 1 );
+
+		return strlen( $tld ) >= 2 && ctype_alpha( $tld );
+	}
+
+	/**
 	 * Validate an email address.
 	 *
 	 * @param string $email The email to validate.
