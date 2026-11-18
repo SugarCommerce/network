@@ -288,37 +288,35 @@ class IP {
 		return filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) === false;
 	}
 
+	/*
+	 * Matching an address against a list.
+	 *
+	 * These read ranges with {@see Range}, the one engine in the library; the
+	 * names are kept for the code that calls them. What changed when they
+	 * moved over: an address in a list is compared as an address, so
+	 * `2001:DB8::1` is `2001:db8::1` and `::ffff:203.0.113.9` is
+	 * `203.0.113.9`; a from-to range (`203.0.113.1-203.0.113.50`) is a
+	 * pattern too; and an IPv6 wildcard names whole groups (`2001:db8:*`)
+	 * rather than matching decimal digits in whatever spelling the address
+	 * arrived in.
+	 */
+
 	/**
-	 * Check if an IP address or range is in valid CIDR format.
+	 * Check if a range is in valid CIDR format: `203.0.113.0/24`, `2001:db8::/32`.
 	 *
 	 * @param string $range The IP range to validate.
 	 *
 	 * @return bool True if valid CIDR format.
 	 */
 	public static function is_valid_range( string $range ): bool {
-		if ( ! str_contains( $range, '/' ) ) {
-			return false;
-		}
-
-		[ $ip, $subnet ] = explode( '/', $range, 2 );
-		if ( ! is_numeric( $subnet ) ) {
-			return false;
-		}
-
-		$subnet = (int) $subnet;
-		if ( self::is_valid_ipv4( $ip ) ) {
-			return $subnet >= 0 && $subnet <= 32;
-		}
-
-		if ( self::is_valid_ipv6( $ip ) ) {
-			return $subnet >= 0 && $subnet <= 128;
-		}
-
-		return false;
+		return str_contains( $range, '/' ) && Range::is_valid( $range );
 	}
 
 	/**
 	 * Check if an IP address is within a specified CIDR range.
+	 *
+	 * An address and a range of different families is a miss: mixed lists
+	 * are perfectly ordinary.
 	 *
 	 * @param string $ip    The IP address to check.
 	 * @param string $range The IP range in CIDR format.
@@ -326,65 +324,20 @@ class IP {
 	 * @return bool True if IP is in range.
 	 */
 	public static function is_in_range( string $ip, string $range ): bool {
-		if ( ! self::is_valid( $ip ) || ! self::is_valid_range( $range ) ) {
-			return false;
-		}
-
-		[ $subnet, $bits ] = explode( '/', $range );
-		$bits = (int) $bits;
-
-		// Both sides must be the same family. Dispatching on the address
-		// alone sends an IPv4 address into the IPv4 comparison with an
-		// IPv6 prefix length, and "32 - 128" is a fatal ArithmeticError
-		// rather than a false. Mixed lists are perfectly ordinary, so
-		// this has to be a miss, not a crash.
-		if ( self::is_valid_ipv4( $ip ) && self::is_valid_ipv4( $subnet ) ) {
-			return self::is_ipv4_in_range( $ip, $subnet, $bits );
-		}
-
-		if ( self::is_valid_ipv6( $ip ) && self::is_valid_ipv6( $subnet ) ) {
-			return self::is_ipv6_in_range( $ip, $subnet, $bits );
-		}
-
-		return false;
+		return self::is_valid_range( $range ) && Range::contains( $range, $ip );
 	}
 
 	/**
 	 * Check if an IP address matches any in a list of IPs, ranges, or wildcards.
 	 *
 	 * @param string $ip      The IP address to check.
-	 * @param array  $ip_list List of IPs, CIDR ranges, or wildcard patterns.
+	 * @param array  $ip_list Addresses and ranges, in any form {@see Range}
+	 *                        reads. Anything that is not a string is passed over.
 	 *
 	 * @return bool Whether the IP address matches any in the list.
 	 */
 	public static function is_match( string $ip, array $ip_list ): bool {
-		$ip = trim( $ip );
-		if ( empty( $ip ) || ! self::is_valid( $ip ) ) {
-			return false;
-		}
-
-		foreach ( $ip_list as $pattern ) {
-			$pattern = trim( $pattern );
-
-			// Exact match.
-			if ( $pattern === $ip ) {
-				return true;
-			}
-
-			// CIDR range match.
-			if ( str_contains( $pattern, '/' ) && self::is_valid_range( $pattern ) ) {
-				if ( self::is_in_range( $ip, $pattern ) ) {
-					return true;
-				}
-			}
-
-			// Wildcard match.
-			if ( str_contains( $pattern, '*' ) && self::matches_wildcard( $ip, $pattern ) ) {
-				return true;
-			}
-		}
-
-		return false;
+		return Range::contains_any( $ip_list, $ip );
 	}
 
 	/**
@@ -487,117 +440,36 @@ class IP {
 		return function_exists( 'sanitize_text_field' ) ? sanitize_text_field( $value ) : $value;
 	}
 
-	// ========================================
-	// Private Helper Methods
-	// ========================================
-
-	/**
-	 * Checks if an IPv4 address is within a specified range.
-	 *
-	 * @param string $ip     The IPv4 address to check.
-	 * @param string $subnet The subnet of the range.
-	 * @param int    $bits   The number of network bits.
-	 *
-	 * @return bool True if IPv4 is in range.
-	 */
-	private static function is_ipv4_in_range( string $ip, string $subnet, int $bits ): bool {
-		$ip_long     = ip2long( $ip );
-		$subnet_long = ip2long( $subnet );
-		$mask        = - 1 << ( 32 - $bits );
-		$subnet_long &= $mask;
-
-		return ( $ip_long & $mask ) === $subnet_long;
-	}
-
-	/**
-	 * Checks if an IPv6 address is within a specified range.
-	 *
-	 * @param string $ip     The IPv6 address to check.
-	 * @param string $subnet The subnet of the range.
-	 * @param int    $bits   The number of network bits.
-	 *
-	 * @return bool True if IPv6 is in range.
-	 */
-	private static function is_ipv6_in_range( string $ip, string $subnet, int $bits ): bool {
-		$ip_bin     = inet_pton( $ip );
-		$subnet_bin = inet_pton( $subnet );
-
-		if ( $ip_bin === false || $subnet_bin === false ) {
-			return false;
-		}
-
-		$bits = max( 0, min( 128, $bits ) );
-
-		// Create mask.
-		$mask      = str_repeat( "\xFF", $bits >> 3 );
-		$remainder = $bits & 7;
-		if ( $remainder ) {
-			// Mask to a byte: "0xFF << n" produces a value above 255,
-			// which chr() has deprecated and which will become an error.
-			$mask .= chr( ( 0xFF << ( 8 - $remainder ) ) & 0xFF );
-		}
-		$mask = str_pad( $mask, 16, "\x00" );
-
-		return ( ( $ip_bin & $mask ) === ( $subnet_bin & $mask ) );
-	}
-
 	/**
 	 * Check if an IP matches a wildcard pattern.
 	 *
 	 * @param string $ip      The IP address to check.
-	 * @param string $pattern Wildcard pattern (e.g., 192.168.1.*).
+	 * @param string $pattern Wildcard pattern: `192.168.1.*`, `2001:db8:*`.
 	 *
 	 * @return bool True if IP matches the pattern.
 	 */
 	public static function matches_wildcard( string $ip, string $pattern ): bool {
-		if ( ! self::is_valid( $ip ) || ! str_contains( $pattern, '*' ) ) {
-			return false;
-		}
-
-		$regex = '/^' . str_replace( [ '.', '*' ], [ '\\.', '\\d+' ], $pattern ) . '$/';
-
-		return preg_match( $regex, $ip ) === 1;
+		return str_contains( $pattern, '*' ) && Range::contains( $pattern, $ip );
 	}
 
 	/**
 	 * Check if a string is a valid IP pattern.
 	 *
-	 * Valid patterns:
+	 * Valid patterns are what {@see Range} reads:
 	 * - Single IP: 192.168.1.1
 	 * - CIDR range: 192.168.1.0/24
 	 * - Wildcard: 192.168.*.* or 2001:db8:*
+	 * - From one address to another: 192.168.1.1-192.168.1.50
 	 *
-	 * Wildcards count because is_match() matches them. Leaving them out here
-	 * meant sanitize_pattern_list() stripped exactly the rules matching
-	 * supports, so a saved list quietly lost every wildcard in it.
+	 * The same reading is_match() uses, so a pattern that matches is never
+	 * one sanitize_pattern_list() strips from a saved list.
 	 *
 	 * @param string $pattern The pattern to validate.
 	 *
 	 * @return bool True if valid pattern.
 	 */
 	public static function is_valid_pattern( string $pattern ): bool {
-		$pattern = trim( $pattern );
-
-		if ( empty( $pattern ) ) {
-			return false;
-		}
-
-		// Valid IP.
-		if ( self::is_valid( $pattern ) ) {
-			return true;
-		}
-
-		// Valid CIDR range.
-		if ( self::is_valid_range( $pattern ) ) {
-			return true;
-		}
-
-		// Wildcard pattern.
-		if ( str_contains( $pattern, '*' ) ) {
-			return self::is_valid_wildcard( $pattern );
-		}
-
-		return false;
+		return Range::is_valid( $pattern );
 	}
 
 	/**
@@ -610,24 +482,12 @@ class IP {
 	 *
 	 * @param string $pattern The pattern to validate.
 	 *
-	 * @return bool True if the pattern has at least one literal part.
+	 * @return bool True if the pattern has stars and at least one literal part.
 	 *
 	 * @since 1.2.0
 	 */
 	public static function is_valid_wildcard( string $pattern ): bool {
-		$pattern = trim( $pattern );
-
-		if ( ! str_contains( $pattern, '*' ) ) {
-			return false;
-		}
-
-		// Only the characters an address is written with, plus the wildcard.
-		if ( 1 !== preg_match( '/^[0-9a-fA-F.:*]+$/', $pattern ) ) {
-			return false;
-		}
-
-		// At least one part has to be a literal.
-		return '' !== trim( str_replace( array( '*', '.', ':' ), '', $pattern ) );
+		return str_contains( $pattern, '*' ) && Range::is_valid( $pattern );
 	}
 
 	/**

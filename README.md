@@ -31,6 +31,7 @@ keeping the person.
 * Keep a visit for a log as keyed hashes and a network, and block by IP, email or domain
 * Serve the visitor's language from `Accept-Language`, or the one they picked
 * Know the web server, PHP's limits, the disk and whether this is the live site before an upload, an import or a payment
+* Build a client for a keyed third-party API with a cache, a failure memory and one way of reading answers
 
 ## Installation
 
@@ -86,10 +87,19 @@ to anything else that should believe what it believes.
 IP::canonical( '2001:DB8:0::1' );            // "2001:db8::1" -- one spelling to store
 Range::normalize( '203.0.113.77/24' );       // "203.0.113.0/24"
 Range::normalize( '203.0.113.*' );           // "203.0.113.0/24"
+Range::normalize( '2001:db8:*' );            // "2001:db8::/32" -- groups left off the end are stars
 Range::contains_any( $rules, $ip );          // IPv4 and IPv6, any of the three forms
 Range::prefix( $typed ) >= 8;                // refuse a rule that blocks a continent
 IP::sanitize_pattern_list( $_POST['ips'] );  // one a line, or comma-separated
+IP::is_match( $ip, $rules );                 // Range::contains_any() by its older name
 ```
+
+`Range` is the library's one matcher: a prefix (`/24`), stars (`203.*.113.9`,
+`2001:db8:*`) or from-to (`203.0.113.1-203.0.113.50`), in either family, an
+address compared as an address whatever its spelling. `IP::is_match()`,
+`is_in_range()`, `matches_wildcard()`, `is_valid_pattern()`,
+`is_valid_range()` and `is_valid_wildcard()` keep their names and read with
+it, so what a list matches and what its sanitiser keeps always agree.
 
 `IP::is_private()` is PHP's reading. `IP::is_public()` is stricter: it refuses
 carrier-grade NAT, the documentation blocks and multicast, and sees through
@@ -328,7 +338,6 @@ Server::supports_htaccess();        // Apache with mod_rewrite seen
 Server::has_xsendfile();            // Apache with mod_xsendfile, LiteSpeed; nginx when the filter says so
 Server::port();                     // 1-65535, else 443 or 80
 
-Php::max_upload_size();             // bytes: the smaller of upload_max_filesize and post_max_size, 0 for no limit
 Php::has_memory( '256M' );          // still free under the limit
 Php::missing_extensions( [ 'intl', 'gd' ] );
 Php::has_function( 'set_time_limit' ); // not switched off by the host
@@ -359,6 +368,55 @@ the address test on its own.
 
 Whether a request came through Cloudflare is `( new Cloudflare() )->is_active()`,
 which asks who connected rather than trusting a header anyone can send.
+
+The largest upload WordPress will take is core's `wp_max_upload_size()`, and
+its folder for temporary files `get_temp_dir()`: both honour the site's own
+settings (`upload_size_limit`, `WP_TEMP_DIR`), so the library has no copy.
+
+## Asking a third-party API
+
+`Remote\Service` is the base for a client of a keyed API -- an IP reputation
+service, a geocoder. It is the one copy `sugarcommerce/ip-lookup` and
+`sugarcommerce/geocoding` build their providers on: the key, a transient
+cache in front of every question, a short memory of what just failed (so an
+API that is down or out of quota costs one visitor a timeout, not every
+visitor), and reading the HTTP API's answer.
+
+```php
+use SugarCommerce\Network\Remote\Response;
+use SugarCommerce\Network\Remote\Service;
+
+final class Acme extends Service {
+    protected const ID          = 'acme';      // cache keys and error codes: acme_http_error
+    protected const NAME        = 'Acme';      // error messages
+    protected const CACHE_GROUP = 'lookups';   // keys start lookups_acme_; default "remote"
+    protected const CACHE_TTL   = DAY_IN_SECONDS;
+
+    public function check( string $ip ): AcmeAnswer|WP_Error {
+        if ( ! self::is_lookupable( $ip ) ) {  // public internet only: anything else costs a request for nothing
+            return $this->invalid_ip( $ip );
+        }
+
+        $data = $this->remember( $ip, fn() => $this->json( $this->request( 'GET', 'https://api.acme.test/' . $ip ) ) );
+
+        return is_wp_error( $data ) ? $data : new AcmeAnswer( $data );
+    }
+}
+
+final class AcmeAnswer extends Response {}    // get(), to_array(), $answer->field
+
+$acme = new Acme( $key, [ 'cache_ttl' => HOUR_IN_SECONDS, 'failure_ttl' => 60, 'cache' => true ] );
+$acme->clear_cache( '8.8.8.8' );   // one answer
+$acme->clear_cache();              // every answer this service kept
+```
+
+Answers are keyed by the question and the API key, so two accounts never
+share one. Clearing everything starts a new generation of keys, so it works
+with a persistent object cache too, where the transients are not in the
+options table to be found by name.
+
+`Referrer\Icons` finds its pictures' URL with `SugarCommerce\Plugin\Assets`,
+the family's one asset resolver.
 
 ## Moving from arraypress/wp-*
 
@@ -393,7 +451,8 @@ and its methods, under `SugarCommerce\Network`:
 | `ArrayPress\ServerUtils\PHP::get_version()`, `meets_version_requirement()` | `SugarCommerce\Network\Php::version()`, `Php::meets_version()` |
 | `PHP::get_memory_limit_bytes()`, `get_max_execution_time()`, `get_upload_max_filesize_bytes()`, `get_post_max_size_bytes()`, `get_max_input_vars()` | `Php::memory_limit()`, `max_execution_time()`, `upload_max_filesize()`, `post_max_size()`, `max_input_vars()` |
 | `PHP::has_extension()`, `get_missing_extensions()`, `has_function()`, `are_uploads_enabled()`, `is_url_fopen_enabled()`, `has_sufficient_memory()` | `Php::has_extension()`, `missing_extensions()`, `has_function()`, `uploads_enabled()`, `url_fopen_enabled()`, `has_memory()` |
-| `ArrayPress\ServerUtils\System::get_disk_space()`, `has_sufficient_disk_space()`, `get_temp_dir()`, `is_windows()`, `is_linux()`, `is_macos()` | `SugarCommerce\Network\Disk::space()`, `has_space()`, `temp_dir()`, `is_windows()`, `is_linux()`, `is_macos()` |
+| `ArrayPress\ServerUtils\System::get_disk_space()`, `has_sufficient_disk_space()`, `is_windows()`, `is_linux()`, `is_macos()` | `SugarCommerce\Network\Disk::space()`, `has_space()`, `is_windows()`, `is_linux()`, `is_macos()` |
+| `System::get_temp_dir()` | removed: use core's `get_temp_dir()`, which honours `WP_TEMP_DIR` and checks the folder is writable |
 | `ArrayPress\ServerUtils\Environment::get_type()`, `is_localhost()`, `is_staging()`, `is_development()`, `is_production()` | `SugarCommerce\Network\Environment::type()`, `is_local()`, `is_staging()`, `is_development()`, `is_production()` |
 | `Environment::TYPE_LOCALHOST`, `TYPE_STAGING`, `TYPE_PRODUCTION`, `TYPE_DEVELOPMENT` | `Environment::LOCAL`, `STAGING`, `PRODUCTION`, `DEVELOPMENT` |
 
@@ -409,6 +468,8 @@ What moved, because two libraries each had one:
 | `Email::domain_suffixes( $value )` | `Host::suffixes( $value )` |
 | `Email::is_hostname( $name )` | `Host::is_hostname( $name )` |
 | `Referrer::is_domain_or_subdomain( $host, $domain )` | `Host::is_within( $host, $domain )` -- also case-blind, and refuses a host no browser would go to |
+| `IP::is_in_range()`, `is_match()`, `matches_wildcard()` and their own CIDR and wildcard engine | the same names, reading with `Range` -- the engine is gone |
+| `SugarCommerce\IpLookup\{Service, Response}`, `SugarCommerce\Geocoding\{Service, Response}` | `SugarCommerce\Network\Remote\{Service, Response}` |
 
 The global helpers are gone. A global function is the one thing Strauss
 cannot prefix, so two plugins bundling different copies shared whichever
@@ -461,12 +522,15 @@ Answers that changed:
 * `Server::software()` reads the request each time; there is no static cache. `Server::port()` is 1-65535, else 443 or 80 by HTTPS; it used to cast whatever was there.
 * `Server::has_mod_rewrite()` also reads `REDIRECT_HTTP_MOD_REWRITE`, and the variable from the request as well as the environment.
 * `Disk::space()` on a disk reporting no size is 0% full rather than a division by zero. The operating system is read from `PHP_OS_FAMILY`.
-* `Php::max_upload_size()` is new: the number an upload form needs.
+* `Php::max_upload_size()`, briefly new, is gone: core's `wp_max_upload_size()` is the number WordPress enforces, after the `upload_size_limit` filter.
+* `IP::is_match()` compares an address in a list as an address (`2001:DB8::1` is `2001:db8::1`, `::ffff:203.0.113.9` is `203.0.113.9`), takes from-to ranges, and skips anything in the list that is not a string where it used to throw. An IPv6 wildcard names whole groups -- `2001:db8:*` -- where it used to match decimal digits in the address's own spelling; `2001:db8::*` (a gap of unknown length) and `192.168.*` (too few parts) never matched an address correctly and are no longer valid patterns. `*.*.*.*` matches nothing, as `is_valid_pattern()` already said.
+* `IP::is_valid_pattern()` accepts from-to ranges, because `is_match()` matches them.
 
 ## Requirements
 
 * PHP 8.3 or later
 * WordPress 7.1 or later
+* `sugarcommerce/plugin`, for the source icons' URL
 
 ## License
 

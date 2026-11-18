@@ -87,20 +87,6 @@ final class Php {
 	}
 
 	/**
-	 * The largest file an upload form can take, in bytes.
-	 *
-	 * The smaller of the two limits that apply -- a file under
-	 * `upload_max_filesize` is still refused when the request it travels
-	 * in is over `post_max_size`. A limit of 0 is no limit, not the
-	 * smallest.
-	 *
-	 * @return int 0 for no limit.
-	 */
-	public static function max_upload_size(): int {
-		return self::smallest( self::upload_max_filesize(), self::post_max_size() );
-	}
-
-	/**
 	 * The most input variables PHP reads from one request.
 	 *
 	 * A settings form with more fields than this loses the rest, silently.
@@ -198,18 +184,5 @@ final class Php {
 	 */
 	private static function bytes( string $value ): int {
 		return (int) wp_convert_hr_to_bytes( $value );
-	}
-
-	/**
-	 * The smallest of some limits, where 0 is no limit.
-	 *
-	 * @param int ...$limits Bytes.
-	 *
-	 * @return int 0 when none is set.
-	 */
-	private static function smallest( int ...$limits ): int {
-		$set = array_filter( $limits, static fn( int $limit ): bool => $limit > 0 );
-
-		return [] === $set ? 0 : min( $set );
 	}
 }

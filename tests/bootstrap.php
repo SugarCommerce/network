@@ -42,6 +42,32 @@ $GLOBALS['ru_options'] = [ 'siteurl' => 'https://example.test' ];
  */
 $GLOBALS['ru_filters'] = [];
 
+if ( ! function_exists( 'site_url' ) ) {
+	/**
+	 * The site's URL, for Plugin\Assets.
+	 *
+	 * @param string $path A path under it.
+	 *
+	 * @return string
+	 */
+	function site_url( $path = '' ) {
+		return 'https://example.test' . $path;
+	}
+}
+
+if ( ! function_exists( 'wp_normalize_path' ) ) {
+	/**
+	 * Core's, near enough: forward slashes, no doubled ones.
+	 *
+	 * @param string $path A path.
+	 *
+	 * @return string
+	 */
+	function wp_normalize_path( $path ) {
+		return (string) preg_replace( '|(?<=.)/+|', '/', str_replace( '\\', '/', (string) $path ) );
+	}
+}
+
 if ( ! function_exists( 'get_option' ) ) {
 	/**
 	 * Read a stubbed option.
@@ -417,6 +443,7 @@ if ( ! function_exists( 'wp_date' ) ) {
 }
 
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
+require_once __DIR__ . '/Remote/stubs.php';
 
 /*
  * The query-string helpers below are copied verbatim from WordPress core

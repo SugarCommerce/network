@@ -86,25 +86,6 @@ final class PhpTest extends TestCase {
 	}
 
 	/**
-	 * The largest upload is the smaller limit, and 0 is no limit.
-	 *
-	 * Both are fixed at start-up, so this runs a PHP of its own with each
-	 * pair set.
-	 */
-	public function test_the_largest_upload_is_the_smaller_limit(): void {
-		$cases = [
-			[ '8M', '2M', 2 * 1024 * 1024 ],
-			[ '2M', '8M', 2 * 1024 * 1024 ],
-			[ '8M', '0', 8 * 1024 * 1024 ],
-			[ '0', '0', 0 ],
-		];
-
-		foreach ( $cases as [ $post, $upload, $expect ] ) {
-			$this->assertSame( (string) $expect, $this->in_php( [ 'post_max_size' => $post, 'upload_max_filesize' => $upload ], 'Php::max_upload_size()' ), $post . ' / ' . $upload );
-		}
-	}
-
-	/**
 	 * A memory requirement can be given in shorthand.
 	 */
 	public function test_a_memory_requirement_accepts_shorthand(): void {
@@ -156,14 +137,6 @@ final class PhpTest extends TestCase {
 	}
 
 	/**
-	 * There is somewhere to write a temporary file.
-	 */
-	public function test_there_is_a_temp_directory(): void {
-		$this->assertSame( sys_get_temp_dir(), Disk::temp_dir() );
-		$this->assertDirectoryExists( Disk::temp_dir() );
-	}
-
-	/**
 	 * The disk the library is on has a size, some of it free.
 	 */
 	public function test_disk_space(): void {
@@ -200,25 +173,5 @@ final class PhpTest extends TestCase {
 		);
 
 		$this->assertSame( 75.0, $figures->invoke( null, 400.0, 100.0 )['percent'] );
-	}
-
-	/**
-	 * One expression's answer from a PHP started with these settings.
-	 *
-	 * @param array<string, string> $ini        Settings.
-	 * @param string                $expression An expression in the library's namespace.
-	 *
-	 * @return string
-	 */
-	private function in_php( array $ini, string $expression ): string {
-		$bootstrap = dirname( __DIR__ ) . '/bootstrap.php';
-		$code      = 'require ' . var_export( $bootstrap, true ) . '; echo \SugarCommerce\Network\\' . $expression . ';';
-		$flags     = '';
-
-		foreach ( $ini as $name => $value ) {
-			$flags .= ' -d ' . escapeshellarg( $name . '=' . $value );
-		}
-
-		return trim( (string) shell_exec( escapeshellarg( PHP_BINARY ) . ' -n' . $flags . ' -r ' . escapeshellarg( $code ) . ' 2>&1' ) );
 	}
 }

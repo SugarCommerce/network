@@ -11,8 +11,18 @@
     }
   ],
   "require": {
-    "php": ">=8.3"
+    "php": ">=8.3",
+    "sugarcommerce/plugin": "dev-main"
   },
+  "repositories": [
+    {
+      "type": "path",
+      "url": "../plugin",
+      "options": {
+        "symlink": false
+      }
+    }
+  ],
   "autoload": {
     "psr-4": {
       "SugarCommerce\\Network\\": "src/"
@@ -62,7 +72,8 @@
       "SugarCommerce\\Network\\Tests\\": "tests/"
     },
     "exclude-from-classmap": [
-      "/tests/bootstrap.php"
+      "/tests/bootstrap.php",
+      "/tests/Remote/stubs.php"
     ]
   },
   "scripts": {

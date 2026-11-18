@@ -49,6 +49,12 @@ final class RangeTest extends TestCase {
 			'a star in the middle, padded'     => [ '203.*.007.09', '203.*.7.9' ],
 			'stars either side'                => [ '203.*.113.*', '203.*.113.*' ],
 			'a star first'                     => [ '*.0.113.9', '*.0.113.9' ],
+			'an ipv6 star'                     => [ '2001:db8:*', '2001:db8::/32' ],
+			'an ipv6 star, padded and upper'   => [ '2001:0DB8:00aa:*', '2001:db8:aa::/48' ],
+			'ipv6 stars written out'           => [ '2001:db8:*:*:*:*:*:*', '2001:db8::/32' ],
+			'an ipv6 star in the middle'       => [ '2001:*:0005', '2001:*:5' ],
+			'ipv6 trailing stars left off'     => [ '2001:*:5:*:*', '2001:*:5' ],
+			'an ipv6 star first'               => [ '*:db8:*:1', '*:db8:*:1' ],
 			'from and to'                      => [ '203.0.113.1-203.0.113.50', '203.0.113.1-203.0.113.50' ],
 			'from and to, with spaces'         => [ ' 203.0.113.1 - 203.0.113.50 ', '203.0.113.1-203.0.113.50' ],
 			'from and to, backwards'           => [ '203.0.113.50-203.0.113.1', '203.0.113.1-203.0.113.50' ],
@@ -75,7 +81,11 @@ final class RangeTest extends TestCase {
 			'five parts'                       => [ '203.0.113.9.*', null ],
 			'a star part too large'            => [ '203.*.113.256', null ],
 			'half a star'                      => [ '203.0.113.1*', null ],
-			'an ipv6 star'                     => [ '2001:db8:*', null ],
+			'an ipv6 star in a gap'            => [ '2001:db8::*', null ],
+			'nothing but ipv6 stars'           => [ '*:*', null ],
+			'nine ipv6 groups'                 => [ '2001:db8:1:2:3:4:5:6:*', null ],
+			'an ipv6 group too long'           => [ '2001:0db8a:*', null ],
+			'half an ipv6 star'                => [ '2001:db8*', null ],
 			'a star and a prefix'              => [ '203.0.113.*/24', null ],
 			'from one family to the other'     => [ '203.0.113.1-2001:db8::1', null ],
 			'three ends'                       => [ '203.0.113.1-203.0.113.5-203.0.113.9', null ],
@@ -106,7 +116,7 @@ final class RangeTest extends TestCase {
 	 * A range is more than one address.
 	 */
 	public function test_is_range(): void {
-		foreach ( [ '203.0.113.0/24', '203.0.113.*', '203.*.113.9', '203.0.113.1-203.0.113.50', '2001:db8::/32', '2001:db8::1-2001:db8::ff', '0.0.0.0/0' ] as $range ) {
+		foreach ( [ '203.0.113.0/24', '203.0.113.*', '203.*.113.9', '2001:db8:*', '2001:*:5', '203.0.113.1-203.0.113.50', '2001:db8::/32', '2001:db8::1-2001:db8::ff', '0.0.0.0/0' ] as $range ) {
 			$this->assertTrue( Range::is_range( $range ), $range );
 		}
 
@@ -136,6 +146,10 @@ final class RangeTest extends TestCase {
 			'a star in the middle'     => [ '203.*.113.9', [ '203.0.113.9', '203.255.113.9', '::ffff:203.7.113.9' ], [ '203.0.113.90', '203.0.113.8', '204.0.113.9', '203.0.11.39' ] ],
 			'stars either side'        => [ '203.*.113.*', [ '203.1.113.1' ], [ '203.1.114.1' ] ],
 			'a padded star pattern'    => [ '203.*.007.09', [ '203.1.7.9' ], [ '203.1.7.90' ] ],
+			'an ipv6 star'             => [ '2001:db8:*', [ '2001:db8::1', '2001:DB8:ffff::', '2001:0db8:85a3::1' ], [ '2001:db9::1', '2001:db7:ffff::', '203.0.113.9', '32.1.13.184' ] ],
+			'an ipv6 star, padded'     => [ '2001:0DB8:*', [ '2001:db8:85a3::1' ], [ '2001:db9::1' ] ],
+			'an ipv6 star in between'  => [ '2001:*:5', [ '2001:aa:5::', '2001:ffff:5:1:2:3:4:5' ], [ '2001:aa:6::', '2002:aa:5::' ] ],
+			'an ipv6 star first'       => [ '*:db8:*:1', [ '2001:db8:7:1::', 'ffff:db8:0:1::9' ], [ '2001:db8:7:2::', '2001:db9:7:1::' ] ],
 			'from and to'              => [ '203.0.113.10-203.0.113.50', [ '203.0.113.10', '203.0.113.33', '203.0.113.50', '::ffff:203.0.113.20' ], [ '203.0.113.9', '203.0.113.51', '203.0.114.20', '2001:db8::1' ] ],
 			'from and to, backwards'   => [ '203.0.113.50-203.0.113.10', [ '203.0.113.33' ], [ '203.0.113.51' ] ],
 			'across a byte'            => [ '203.0.113.200-203.0.114.2', [ '203.0.113.255', '203.0.114.0', '203.0.114.2' ], [ '203.0.114.3', '203.0.113.199' ] ],
@@ -171,7 +185,7 @@ final class RangeTest extends TestCase {
 	 * Nonsense on either side is a miss, never an error.
 	 */
 	public function test_contains_nothing_malformed(): void {
-		foreach ( [ '', 'nonsense', '203.0.113.0/33', '203.0.113.0/x', '*.*', '203.0.*', 'a-b', '203.0.113.1-2001:db8::1', '2001:db8:*' ] as $range ) {
+		foreach ( [ '', 'nonsense', '203.0.113.0/33', '203.0.113.0/x', '*.*', '203.0.*', 'a-b', '203.0.113.1-2001:db8::1', '2001:db8::*', '*.*.*.*', '*:*' ] as $range ) {
 			$this->assertFalse( Range::contains( $range, '203.0.113.9' ), $range );
 			$this->assertFalse( Range::contains( $range, '2001:db8::1' ), $range );
 		}
@@ -230,7 +244,7 @@ final class RangeTest extends TestCase {
 		}
 
 		// Not nought, and not whatever is left of 2 ** 96 in an integer.
-		foreach ( [ '2001:db8::7', '2001:db8::/32', '2001:db8::/127', '::/0', '2001:db8::1-2001:db8::ff', '', 'nonsense', '203.0.113.0/33', '*.*.*.*' ] as $range ) {
+		foreach ( [ '2001:db8::7', '2001:db8::/32', '2001:db8::/127', '::/0', '2001:db8::1-2001:db8::ff', '2001:*:5', '', 'nonsense', '203.0.113.0/33', '*.*.*.*' ] as $range ) {
 			$this->assertNull( Range::size( $range ), $range );
 		}
 	}
@@ -252,6 +266,9 @@ final class RangeTest extends TestCase {
 			'203.*.113.9'                           => 8,
 			'203.0.*.9'                             => 16,
 			'*.0.113.9'                             => 0,
+			'2001:db8:*'                            => 32,
+			'2001:db8:aa:*:5'                       => 48,
+			'*:db8:*:1'                             => 0,
 			'203.0.113.1-203.0.113.50'              => 26,
 			'203.0.113.0-203.0.113.255'             => 24,
 			'203.0.113.200-203.0.114.2'             => 22,
@@ -281,7 +298,7 @@ final class RangeTest extends TestCase {
 			$this->assertSame( 4, Range::version( $range ), $range );
 		}
 
-		foreach ( [ '2001:db8::7', '2001:db8::/32', '2001:db8::1-2001:db8::ff' ] as $range ) {
+		foreach ( [ '2001:db8::7', '2001:db8::/32', '2001:db8::1-2001:db8::ff', '2001:*:5' ] as $range ) {
 			$this->assertSame( 6, Range::version( $range ), $range );
 		}
 

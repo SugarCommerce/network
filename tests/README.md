@@ -8,7 +8,8 @@ from core where the answer depends on core's exact behaviour (`is_email()`,
 One folder per part of the library:
 
 - **IP** -- `IP::get()` and every spoofing case, `ClientIp`, `TrustedProxies`,
-  `Range`, canonical spellings, patterns, and `PublicTest` (`is_public()`,
+  `Range` (the one matcher: `PatternTest` checks the old `IP::` names read
+  with it), canonical spellings, patterns, and `PublicTest` (`is_public()`,
   `anonymized_cidr()`, `hash()`).
 - **Host** -- ports, typed domains, label boundaries, loopback, and the
   domains and endings an address is at.
@@ -29,6 +30,10 @@ One folder per part of the library:
   run a PHP of their own.
 - **Visit**, **Blocklist**, **Server** -- the record a log keeps, a
   blocklist's rules, how `$_SERVER` is read, and the web server.
+- **Remote** -- the cached third-party API base through a made-up service:
+  the cache, its keys, the failure memory, clearing with and without a
+  persistent object cache, refused addresses and unreadable answers.
+  `Remote/stubs.php` stands in for transients and the HTTP API.
 - **MovingTest** -- the static call that replaces each of the old libraries'
   global helpers, and wp-server-utils' new names.
 

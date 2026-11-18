@@ -70,15 +70,6 @@ final class Disk {
 	}
 
 	/**
-	 * The system's folder for temporary files.
-	 *
-	 * @return string
-	 */
-	public static function temp_dir(): string {
-		return sys_get_temp_dir();
-	}
-
-	/**
 	 * Whether the server runs Windows.
 	 *
 	 * @return bool

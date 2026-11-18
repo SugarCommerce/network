@@ -16,6 +16,7 @@ declare( strict_types=1 );
 namespace SugarCommerce\Network\Referrer;
 
 use SugarCommerce\Network\Referrer;
+use SugarCommerce\Plugin\Assets;
 
 /**
  * Class Icons
@@ -232,14 +233,6 @@ final class Icons {
 	];
 
 	/**
-	 * The folder's URL, once it has been worked out.
-	 *
-	 * @since 1.2.0
-	 * @var string|null Null until asked; empty when it cannot be found.
-	 */
-	private static ?string $base_url = null;
-
-	/**
 	 * Every named source that has a mark of its own, with its file.
 	 *
 	 * @since 1.2.0
@@ -404,11 +397,9 @@ final class Icons {
 	 *
 	 * The library is installed wherever its host put it -- a vendor/ folder,
 	 * a prefixed copy made by Strauss, a plugin of its own -- so the URL is
-	 * worked out from where this file is: under the content directory, or
-	 * failing that under the WordPress root, or through the map core keeps
-	 * of symlinked plugins. The same three places arraypress/
-	 * wp-composer-assets looks; written out here so that a library with no
-	 * dependencies keeps none.
+	 * worked out from where this file is, by {@see Assets}: under the
+	 * content directory, the WordPress root, or through the map core keeps
+	 * of symlinked plugins. Assets remembers the answer.
 	 *
 	 * @since 1.2.0
 	 *
@@ -416,35 +407,22 @@ final class Icons {
 	 *                there, or is somewhere WordPress does not serve.
 	 */
 	public static function base_url(): string {
-		if ( null !== self::$base_url ) {
-			return self::$base_url;
-		}
-
-		$dir = self::normalize( self::dir() );
-
-		if ( ! is_dir( $dir ) ) {
-			self::$base_url = '';
-
-			return '';
-		}
-
-		self::$base_url = self::url_of( $dir ) ?? '';
-
-		return self::$base_url;
+		return Assets::url( __FILE__, 'sources' ) ?? '';
 	}
 
 	/**
 	 * Forget the folder's URL, so it is worked out again.
 	 *
 	 * For a test, and for a host that moves the content directory after
-	 * something has already asked.
+	 * something has already asked. Assets forgets every package's folder
+	 * with it.
 	 *
 	 * @since 1.2.0
 	 *
 	 * @return void
 	 */
 	public static function reset(): void {
-		self::$base_url = null;
+		Assets::clear_cache();
 	}
 
 	/**
@@ -484,89 +462,5 @@ final class Icons {
 		$names = array_values( array_unique( $names ) );
 
 		return $names;
-	}
-
-	/**
-	 * The URL of a folder on disk, if WordPress serves it.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @param string $path A normalised absolute path.
-	 *
-	 * @return string|null
-	 */
-	private static function url_of( string $path ): ?string {
-		if ( defined( 'WP_CONTENT_DIR' ) && function_exists( 'content_url' ) ) {
-			$url = self::url_within( $path, self::normalize( (string) WP_CONTENT_DIR ), content_url() );
-
-			if ( null !== $url ) {
-				return $url;
-			}
-		}
-
-		if ( defined( 'ABSPATH' ) && function_exists( 'site_url' ) ) {
-			$url = self::url_within( $path, self::normalize( (string) ABSPATH ), site_url( '/' ) );
-
-			if ( null !== $url ) {
-				return $url;
-			}
-		}
-
-		// A symlinked plugin: __DIR__ is the real path, which can be anywhere
-		// on disk. Core keeps a map from each plugin's path under the
-		// content directory to its real one, and plugins_url() reads it.
-		foreach ( (array) ( $GLOBALS['wp_plugin_paths'] ?? [] ) as $plugin_path => $real_path ) {
-			$real_path = rtrim( self::normalize( (string) $real_path ), '/' );
-
-			if ( '' === $real_path || ! str_starts_with( $path, $real_path . '/' ) ) {
-				continue;
-			}
-
-			$mapped = rtrim( self::normalize( (string) $plugin_path ), '/' ) . substr( $path, strlen( $real_path ) );
-
-			if ( $mapped !== $path && defined( 'WP_CONTENT_DIR' ) && function_exists( 'content_url' ) ) {
-				$url = self::url_within( $mapped, self::normalize( (string) WP_CONTENT_DIR ), content_url() );
-
-				if ( null !== $url ) {
-					return $url;
-				}
-			}
-		}
-
-		return null;
-	}
-
-	/**
-	 * The URL of a path, if it sits under a folder whose URL is known.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @param string $path     Normalised absolute path.
-	 * @param string $base     Normalised base folder.
-	 * @param string $base_url The base folder's URL.
-	 *
-	 * @return string|null
-	 */
-	private static function url_within( string $path, string $base, string $base_url ): ?string {
-		$base = rtrim( $base, '/' );
-
-		if ( '' === $base || ! str_starts_with( $path, $base . '/' ) ) {
-			return null;
-		}
-
-		return rtrim( $base_url, '/' ) . substr( $path, strlen( $base ) );
-	}
-
-	/**
-	 * A path with forward slashes, as core's wp_normalize_path() gives it.
-	 *
-	 * @since 1.2.0
-	 *
-	 * @param string $path A path.
-	 *
-	 * @return string
-	 */
-	private static function normalize( string $path ): string {
-		return function_exists( 'wp_normalize_path' ) ? wp_normalize_path( $path ) : str_replace( '\\', '/', $path );
 	}
 }

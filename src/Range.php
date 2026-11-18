@@ -21,8 +21,10 @@ namespace SugarCommerce\Network;
  * A range is written one of three ways, and all three are read here:
  *
  *  - with a prefix, `203.0.113.0/24` or `2001:db8::/32`;
- *  - with stars, `203.0.113.*` or `203.*.113.9`. IPv4 only: an IPv6
- *    address has too many spellings for a star to mean one thing;
+ *  - with stars, `203.0.113.*` or `203.*.113.9`, a star standing for one
+ *    whole part. In IPv6 every group is written out (`2001:db8:*`, never
+ *    `2001:db8::*`, which hides how many groups the gap is), and groups
+ *    left off the end are stars: `2001:db8:*` is `2001:db8::/32`;
  *  - from one address to another, `203.0.113.1-203.0.113.50`, in either
  *    family -- how a hosting company's abuse desk writes one in an email.
  *
@@ -53,9 +55,10 @@ class Range {
 	 *    `203.0.113.77/24` is `203.0.113.0/24`. A prefix as long as the
 	 *    address is that one address;
 	 *  - stars standing for whole trailing parts are the prefixed range
-	 *    they mean: `203.0.113.*` is `203.0.113.0/24`. A star anywhere
-	 *    else, `203.*.113.9`, is kept as written, with each number in its
-	 *    plain form (`007` is `7`);
+	 *    they mean: `203.0.113.*` is `203.0.113.0/24`, `2001:db8:*` is
+	 *    `2001:db8::/32`. A star anywhere else, `203.*.113.9`, is kept as
+	 *    written, with each number in its plain form (`007` is `7`, `0DB8`
+	 *    is `db8`) and an IPv6 pattern's trailing stars left off;
 	 *  - a from-to range is kept low end first, each end in its standard
 	 *    spelling. Two equal ends are one address;
 	 *  - an address is {@see IP::canonical()}.
@@ -239,7 +242,9 @@ class Range {
 		}
 
 		if ( str_contains( $range, '*' ) ) {
-			return 8 * (int) array_search( '*', explode( '.', $range ), true );
+			return str_contains( $range, ':' )
+				? 16 * (int) array_search( '*', explode( ':', $range ), true )
+				: 8 * (int) array_search( '*', explode( '.', $range ), true );
 		}
 
 		if ( ! str_contains( $range, '-' ) ) {
@@ -280,9 +285,9 @@ class Range {
 	/**
 	 * A range written with stars.
 	 *
-	 * Four parts, each a number or a star, and at least one a number: a
-	 * pattern of nothing but stars is every address there is, and is not
-	 * something anybody means.
+	 * Four parts for IPv4 and up to eight groups for IPv6, each a number or
+	 * a star, and at least one a number: a pattern of nothing but stars is
+	 * every address there is, and is not something anybody means.
 	 *
 	 * @param string $range What was typed.
 	 *
@@ -295,51 +300,80 @@ class Range {
 			return null;
 		}
 
+		$ipv6  = 8 === count( $parts );
 		$stars = count( array_keys( $parts, '*', true ) );
-		$fixed = array_slice( $parts, 0, 4 - $stars );
-
-		if ( 4 === $stars ) {
-			return null;
-		}
+		$fixed = array_slice( $parts, 0, count( $parts ) - $stars );
 
 		// Whole trailing parts are the one wildcard that is also a prefix.
 		if ( ! in_array( '*', $fixed, true ) ) {
+			if ( $ipv6 ) {
+				$network = inet_ntop( (string) inet_pton( implode( ':', array_pad( $fixed, 8, '0' ) ) ) );
+
+				return $network . '/' . ( 16 * count( $fixed ) );
+			}
+
 			return implode( '.', array_merge( $fixed, array_fill( 0, $stars, '0' ) ) ) . '/' . ( 8 * count( $fixed ) );
 		}
 
-		return implode( '.', $parts );
+		if ( ! $ipv6 ) {
+			return implode( '.', $parts );
+		}
+
+		// Groups left off the end are stars, so they are left off.
+		while ( '*' === end( $parts ) ) {
+			array_pop( $parts );
+		}
+
+		return implode( ':', $parts );
 	}
 
 	/**
-	 * The four parts of a pattern with stars in it, each a star or a
-	 * number in its plain form.
+	 * The parts of a pattern with stars in it, each a star or a number in
+	 * its plain form: four for IPv4, eight for IPv6, the groups an IPv6
+	 * pattern leaves off the end filled in as stars.
 	 *
 	 * @param string $range The pattern.
 	 *
 	 * @return array|null Null when it is not four parts of numbers up to
-	 *                    255 and stars.
+	 *                    255 and stars, or up to eight groups of one to four
+	 *                    hex digits and stars -- and when every part is a
+	 *                    star.
 	 */
 	private static function wildcard_parts( string $range ): ?array {
-		if ( 1 !== preg_match( '/^(?:\d{1,3}|\*)(?:\.(?:\d{1,3}|\*)){3}$/D', $range ) ) {
-			return null;
-		}
-
-		$parts = explode( '.', $range );
-
-		foreach ( $parts as $index => $part ) {
-			if ( '*' === $part ) {
-				continue;
-			}
-
-			if ( (int) $part > 255 ) {
+		if ( str_contains( $range, ':' ) ) {
+			// Every group written out: "::" hides how many groups it is.
+			if ( 1 !== preg_match( '/^(?:[0-9a-f]{1,4}|\*)(?::(?:[0-9a-f]{1,4}|\*)){1,7}$/Di', $range ) ) {
 				return null;
 			}
 
-			// "007" and "7" are one number, and must be one rule.
-			$parts[ $index ] = (string) (int) $part;
+			// "0DB8" and "db8" are one group, and must be one rule.
+			$parts = array_map(
+				static fn( string $part ): string => '*' === $part ? '*' : ( ltrim( strtolower( $part ), '0' ) ?: '0' ),
+				explode( ':', $range )
+			);
+			$parts = array_pad( $parts, 8, '*' );
+		} else {
+			if ( 1 !== preg_match( '/^(?:\d{1,3}|\*)(?:\.(?:\d{1,3}|\*)){3}$/D', $range ) ) {
+				return null;
+			}
+
+			$parts = explode( '.', $range );
+
+			foreach ( $parts as $index => $part ) {
+				if ( '*' === $part ) {
+					continue;
+				}
+
+				if ( (int) $part > 255 ) {
+					return null;
+				}
+
+				// "007" and "7" are one number, and must be one rule.
+				$parts[ $index ] = (string) (int) $part;
+			}
 		}
 
-		return $parts;
+		return count( $parts ) === count( array_keys( $parts, '*', true ) ) ? null : $parts;
 	}
 
 	/**
@@ -352,13 +386,22 @@ class Range {
 	 */
 	private static function wildcard_contains( string $range, string $packed ): bool {
 		$parts = self::wildcard_parts( $range );
+		$ipv6  = null !== $parts && 8 === count( $parts );
 
-		if ( null === $parts || 4 !== strlen( $packed ) ) {
+		// Four parts of a byte each, or eight groups of two.
+		if ( null === $parts || strlen( $packed ) !== ( $ipv6 ? 16 : 4 ) ) {
 			return false;
 		}
 
 		foreach ( $parts as $index => $part ) {
-			if ( '*' !== $part && (int) $part !== ord( $packed[ $index ] ) ) {
+			if ( '*' === $part ) {
+				continue;
+			}
+
+			$want = $ipv6 ? (int) hexdec( $part ) : (int) $part;
+			$have = $ipv6 ? ( ord( $packed[ 2 * $index ] ) << 8 ) | ord( $packed[ 2 * $index + 1 ] ) : ord( $packed[ $index ] );
+
+			if ( $want !== $have ) {
 				return false;
 			}
 		}

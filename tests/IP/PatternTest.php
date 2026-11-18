@@ -55,6 +55,8 @@ final class PatternTest extends TestCase {
 			'ipv6 cidr'     => [ '2001:db8::/32' ],
 			'wildcard octet' => [ '192.168.1.*' ],
 			'wildcard pair' => [ '192.168.*.*' ],
+			'ipv6 wildcard' => [ '2001:db8:*' ],
+			'from and to'   => [ '192.168.1.1-192.168.1.50' ],
 		];
 	}
 
@@ -67,6 +69,34 @@ final class PatternTest extends TestCase {
 		$this->assertTrue( IP::is_match( '192.168.4.9', $list ) );
 		$this->assertTrue( IP::is_match( '203.0.113.5', $list ) );
 		$this->assertFalse( IP::is_match( '198.51.100.1', $list ) );
+	}
+
+	/**
+	 * Every supported pattern matches what it describes, through the names
+	 * the old engine had -- which now read ranges with Range.
+	 */
+	public function test_the_old_names_match_through_range(): void {
+		$this->assertTrue( IP::is_match( '2001:DB8::1', [ ' 2001:db8::1 ' ] ), 'An address is compared as an address.' );
+		$this->assertTrue( IP::is_match( '::ffff:203.0.113.9', [ '203.0.113.0/24' ] ) );
+		$this->assertTrue( IP::is_match( '192.168.1.20', [ '192.168.1.1-192.168.1.50' ] ) );
+		$this->assertTrue( IP::is_match( '2001:db8:85a3::1', [ '2001:db8:*' ] ) );
+		$this->assertFalse( IP::is_match( '2001:db9::1', [ '2001:db8:*' ] ) );
+		$this->assertFalse( IP::is_match( '203.0.113.9', [ '*.*.*.*', null, 7 ] ), 'A match-everything pattern matched.' );
+		$this->assertFalse( IP::is_match( 'not an ip', [ '0.0.0.0/0' ] ) );
+
+		$this->assertTrue( IP::is_in_range( '203.0.113.9', '203.0.113.0/24' ) );
+		$this->assertFalse( IP::is_in_range( '203.0.113.9', '203.0.113.*' ), 'is_in_range() is for CIDR ranges.' );
+		$this->assertFalse( IP::is_in_range( '32.1.13.184', '2001:db8::/32' ), 'An IPv4 address matched an IPv6 range byte for byte.' );
+		$this->assertFalse( IP::is_in_range( '203.0.113.9', '203.0.113.0/33' ) );
+
+		$this->assertTrue( IP::matches_wildcard( '203.0.113.9', '203.0.113.*' ) );
+		$this->assertTrue( IP::matches_wildcard( '2001:db8::1', '2001:db8:*' ) );
+		$this->assertFalse( IP::matches_wildcard( '203.0.113.9', '203.0.113.0/24' ), 'A CIDR range is not a wildcard.' );
+
+		$this->assertTrue( IP::is_valid_range( '2001:db8::/32' ) );
+		$this->assertFalse( IP::is_valid_range( '203.0.113.9' ) );
+		$this->assertTrue( IP::is_valid_wildcard( '203.*.113.9' ) );
+		$this->assertFalse( IP::is_valid_wildcard( '203.0.113.9' ) );
 	}
 
 	/**
@@ -95,6 +125,8 @@ final class PatternTest extends TestCase {
 			'all wildcards v4' => [ '*.*.*.*' ],
 			'all wildcards v6' => [ '*:*' ],
 			'wildcard words'   => [ 'evil*.example.com' ],
+			'v6 wildcard gap'  => [ '2001:db8::*' ],
+			'short v4 wildcard' => [ '192.168.*' ],
 		];
 	}
 
