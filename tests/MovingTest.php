@@ -9,10 +9,15 @@ declare( strict_types=1 );
 
 namespace SugarCommerce\Network\Tests;
 
+use SugarCommerce\Network\AcceptLanguage;
+use SugarCommerce\Network\Disk;
 use SugarCommerce\Network\Email;
+use SugarCommerce\Network\Environment;
 use SugarCommerce\Network\IP;
 use SugarCommerce\Network\Referrer;
+use SugarCommerce\Network\Php;
 use SugarCommerce\Network\Request;
+use SugarCommerce\Network\Server;
 use PHPUnit\Framework\TestCase;
 
 /**
@@ -35,7 +40,8 @@ final class MovingTest extends TestCase {
 	protected function tearDown(): void {
 		ru_reset_globals();
 		ua_reset_server();
-		unset( $_SERVER['REMOTE_ADDR'] );
+		unset( $_SERVER['REMOTE_ADDR'], $_SERVER['HTTP_ACCEPT_LANGUAGE'], $_SERVER['SERVER_SOFTWARE'] );
+		env_reset();
 	}
 
 	/**
@@ -54,6 +60,10 @@ final class MovingTest extends TestCase {
 			'get_referrer_search_terms',
 			'parse_email',
 			'sanitize_email_list',
+			'get_accept_language',
+			'get_preferred_language',
+			'accepts_language',
+			'is_rtl_language',
 		];
 
 		foreach ( $helpers as $function ) {
@@ -120,5 +130,46 @@ final class MovingTest extends TestCase {
 		$this->assertSame( 'pat@example.com', (string) Email::parse( ' Pat@Example.com ' ) );
 		$this->assertNull( Email::parse( 'nope' ) );
 		$this->assertIsString( Email::sanitize_pattern_list( "*@example.com\n", true ) );
+	}
+
+	/**
+	 * get_accept_language(), get_preferred_language(), accepts_language()
+	 * and is_rtl_language().
+	 */
+	public function test_the_accept_language_helpers(): void {
+		$_SERVER['HTTP_ACCEPT_LANGUAGE'] = 'ar-EG,en;q=0.4';
+
+		$this->assertSame( 'ar-EG', AcceptLanguage::get_primary() );
+		$this->assertSame( 'en', AcceptLanguage::get_best_match( [ 'fr', 'en' ], 'de' ) );
+		$this->assertSame( 'de', AcceptLanguage::get_best_match( [ 'fr' ], 'de' ) );
+		$this->assertTrue( AcceptLanguage::accepts( 'en-US' ) );
+		$this->assertFalse( AcceptLanguage::accepts( 'en-US', true ) );
+		$this->assertTrue( AcceptLanguage::is_rtl() );
+	}
+
+	/**
+	 * Every wp-server-utils method has its new name.
+	 */
+	public function test_the_server_utils_names(): void {
+		$renamed = [
+			Server::class      => [ 'software', 'address', 'port', 'is_apache', 'is_nginx', 'is_litespeed', 'is_iis', 'supports_htaccess', 'has_mod_rewrite', 'supports_url_rewriting', 'supports_gzip', 'has_xsendfile', 'apache_modules', 'has_apache_module' ],
+			Php::class         => [ 'version', 'meets_version', 'memory_limit', 'max_execution_time', 'upload_max_filesize', 'post_max_size', 'max_input_vars', 'has_extension', 'missing_extensions', 'has_function', 'uploads_enabled', 'url_fopen_enabled', 'has_memory', 'max_upload_size' ],
+			Disk::class        => [ 'space', 'has_space', 'temp_dir', 'is_windows', 'is_linux', 'is_macos' ],
+			Environment::class => [ 'type', 'is_local', 'is_staging', 'is_development', 'is_production' ],
+		];
+
+		foreach ( $renamed as $class => $methods ) {
+			foreach ( $methods as $method ) {
+				$this->assertTrue( method_exists( $class, $method ), $class . '::' . $method . '() is missing.' );
+			}
+		}
+
+		$this->assertSame(
+			[ 'local', 'development', 'staging', 'production' ],
+			[ Environment::LOCAL, Environment::DEVELOPMENT, Environment::STAGING, Environment::PRODUCTION ]
+		);
+
+		$_SERVER['SERVER_SOFTWARE'] = 'nginx/1.27.0';
+		$this->assertSame( 'nginx/1.27.0', Server::software() );
 	}
 }

@@ -653,3 +653,99 @@ if ( ! function_exists( 'map_deep' ) ) {
 		return $value;
 	}
 }
+
+/*
+ * The site the Environment tests point at, the Apache module list the
+ * Server tests hand over, and core's byte parser for the Php and Disk
+ * limits.
+ */
+$GLOBALS['ru_site_url']       = 'https://example.com';
+$GLOBALS['ru_apache_modules'] = null;
+
+if ( ! function_exists( 'get_site_url' ) ) {
+	function get_site_url( $blog_id = null, $path = '', $scheme = null ) {
+		return $GLOBALS['ru_site_url'];
+	}
+}
+
+if ( ! function_exists( 'get_home_url' ) ) {
+	function get_home_url( $blog_id = null, $path = '', $scheme = null ) {
+		return $GLOBALS['ru_home_url'] ?? $GLOBALS['ru_site_url'];
+	}
+}
+
+if ( ! function_exists( 'wp_get_environment_type' ) ) {
+	/**
+	 * Core's, without its static cache (core skips the cache under its own
+	 * test suite too).
+	 *
+	 * @return string
+	 */
+	function wp_get_environment_type() {
+		$approved = array( 'local', 'development', 'staging', 'production' );
+		$current  = '';
+
+		$wp_env = getenv( 'WP_ENVIRONMENT_TYPE' );
+		if ( false !== $wp_env ) {
+			$current = $wp_env;
+		}
+
+		if ( defined( 'WP_ENVIRONMENT_TYPE' ) && WP_ENVIRONMENT_TYPE ) {
+			$current = WP_ENVIRONMENT_TYPE;
+		}
+
+		return in_array( $current, $approved, true ) ? $current : 'production';
+	}
+}
+
+if ( ! function_exists( 'apache_get_modules' ) ) {
+	/**
+	 * Apache's module list. False stands for PHP not running inside
+	 * Apache, where the real function does not exist.
+	 *
+	 * @return array|false
+	 */
+	function apache_get_modules() {
+		return $GLOBALS['ru_apache_modules'] ?? false;
+	}
+}
+
+if ( ! function_exists( 'wp_convert_hr_to_bytes' ) ) {
+	/**
+	 * Core's, copied.
+	 *
+	 * @param string $value A PHP.ini size.
+	 *
+	 * @return int
+	 */
+	function wp_convert_hr_to_bytes( $value ) {
+		$value = strtolower( trim( $value ) );
+		$bytes = (int) $value;
+
+		if ( str_contains( $value, 'g' ) ) {
+			$bytes *= 1024 * 1024 * 1024;
+		} elseif ( str_contains( $value, 'm' ) ) {
+			$bytes *= 1024 * 1024;
+		} elseif ( str_contains( $value, 'k' ) ) {
+			$bytes *= 1024;
+		}
+
+		return min( $bytes, PHP_INT_MAX );
+	}
+}
+
+/**
+ * Forget the site, the module list and the environment variables the
+ * Environment and Server tests set.
+ *
+ * @return void
+ */
+function env_reset(): void {
+	$GLOBALS['ru_site_url']       = 'https://example.com';
+	$GLOBALS['ru_apache_modules'] = null;
+	unset( $GLOBALS['ru_home_url'] );
+
+	foreach ( array( 'WP_ENVIRONMENT_TYPE', 'WP_ENV', 'ENVIRONMENT', 'APP_ENV', 'HTTP_MOD_REWRITE', 'REDIRECT_HTTP_MOD_REWRITE' ) as $name ) {
+		putenv( $name );
+	}
+}

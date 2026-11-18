@@ -1,7 +1,9 @@
 # Network
 
 Who a WordPress request is from: the visitor's real IP, their country, their
-browser or bot, where they came from, and the email address they gave.
+language, their browser or bot, where they came from, and the email address
+they gave -- and what the site runs on: the web server, PHP's limits, the disk
+and whether this is the live site.
 
 ## What it does
 
@@ -27,6 +29,8 @@ keeping the person.
 * Remember a visitor's first touch until they buy, without keeping anything about the person
 * Ask the questions an email address raises: same person, role mailbox, typo, disposable `+tag`
 * Keep a visit for a log as keyed hashes and a network, and block by IP, email or domain
+* Serve the visitor's language from `Accept-Language`, or the one they picked
+* Know the web server, PHP's limits, the disk and whether this is the live site before an upload, an import or a payment
 
 ## Installation
 
@@ -273,10 +277,84 @@ foreach ( $rules->keys( IP::get(), $email ) as $type => $pattern ) {   // ip, th
 }
 ```
 
+## Languages
+
+```php
+use SugarCommerce\Network\AcceptLanguage;
+
+AcceptLanguage::get_best_match( [ 'en', 'de', 'fr-CA' ], 'en' );   // de-AT is served by "de"
+AcceptLanguage::pick( [ $_GET['lang'] ?? null, $_COOKIE['lang'] ?? null ], [ 'en', 'de' ], 'en' );
+AcceptLanguage::is_rtl();                       // the visitor's first language reads right to left
+AcceptLanguage::is_rtl_language( 'az-Arab' );   // true -- the script decides
+AcceptLanguage::normalize( 'zh_hant_tw' );      // "zh-Hant-TW"
+AcceptLanguage::endonym( 'pt-BR' );             // "Português (Brasil)", for a language picker
+AcceptLanguage::get_primary( $saved_server );   // any reader, from a saved request
+```
+
+The header is the visitor's to write, so `q=0` is a refusal, a quality is
+held to 0-1, what is not a language tag is dropped, and only the first
+`AcceptLanguage::MAX_ENTRIES` (50) entries of the first
+`AcceptLanguage::MAX_LENGTH` (1,000) bytes are read. An exact tag anywhere
+in the header beats a base-language match.
+
+`pick()` is for a site with a language picker: the visitor's own choice
+beats the browser, and an array from `?lang[]=`, garbage or a language not
+on offer is skipped. `get_common_languages()` and `get_base_languages()`
+give a select's options (`$as_options` for `value`/`label` pairs); the list
+is the same as conditions' `Options\Request::get_languages()`, and the two
+should stay in step.
+
+## The server and the site
+
+```php
+use SugarCommerce\Network\Disk;
+use SugarCommerce\Network\Environment;
+use SugarCommerce\Network\Php;
+use SugarCommerce\Network\Server;
+
+Server::software();                 // "nginx/1.27.0"
+Server::is_nginx();                 // Flywheel, which Local runs, counts
+Server::supports_htaccess();        // Apache with mod_rewrite seen
+Server::has_xsendfile();            // Apache with mod_xsendfile, LiteSpeed; nginx when the filter says so
+Server::port();                     // 1-65535, else 443 or 80
+
+Php::max_upload_size();             // bytes: the smaller of upload_max_filesize and post_max_size, 0 for no limit
+Php::has_memory( '256M' );          // still free under the limit
+Php::missing_extensions( [ 'intl', 'gd' ] );
+Php::has_function( 'set_time_limit' ); // not switched off by the host
+
+Disk::space();                      // [ 'total', 'free', 'used', 'percent' ] for the site's disk
+Disk::has_space( '1G', $dir );
+
+Environment::type();                // "local", "development", "staging", "production"
+Environment::is_production();       // exactly one of the four is true
+```
+
+Every `Server` method takes the same optional `$server` as the rest of the
+library. On nginx, `X-Accel-Redirect` needs an `internal` location PHP cannot
+see, so say when it is set up:
+
+```php
+add_filter( 'sugarcommerce_nginx_xsendfile', '__return_true' );
+```
+
+`Environment` asks WordPress first: `WP_ENVIRONMENT_TYPE` is the site owner
+saying what the site is, and is believed over any guess -- production
+included. Only a site that never said is guessed at: a local address
+(loopback, a private address, `*.test`, `*.local`, `*.localhost`,
+`*.example`, `*.invalid` -- not `*.dev`, which is a real public ending), then
+a `staging`, `stage`, `test` or `demo` label, then `WP_ENV`, `ENVIRONMENT`
+or `APP_ENV`, and `WP_DEBUG` last. `Environment::is_local_host( $host )` is
+the address test on its own.
+
+Whether a request came through Cloudflare is `( new Cloudflare() )->is_active()`,
+which asks who connected rather than trusting a header anyone can send.
+
 ## Moving from arraypress/wp-*
 
 This library is `wp-ip-utils`, `wp-user-agent-utils`, `wp-referrer-utils`,
-`wp-email-utils` and `wp-visitor-country` in one. Every class keeps its name
+`wp-email-utils`, `wp-visitor-country`, `wp-accept-language-utils` and
+`wp-server-utils` in one. Every class keeps its name
 and its methods, under `SugarCommerce\Network`:
 
 | Was | Now |
@@ -291,6 +369,23 @@ and its methods, under `SugarCommerce\Network`:
 | `ArrayPress\VisitorCountry\Country` | `SugarCommerce\Network\Country` |
 | `ArrayPress\VisitorCountry\{Result, Source}` | `SugarCommerce\Network\Country\{Result, Source}` |
 | `ArrayPress\VisitorCountry\Sources\*` | `SugarCommerce\Network\Country\Sources\*` |
+| `ArrayPress\AcceptLanguageUtils\AcceptLanguage` | `SugarCommerce\Network\AcceptLanguage` -- every method the same name |
+
+`wp-server-utils`, renamed to read like the rest of the library:
+
+| Was | Now |
+|---|---|
+| `ArrayPress\ServerUtils\Server::get_software()` | `SugarCommerce\Network\Server::software()` |
+| `Server::get_ip()`, `get_port()` | `Server::address()`, `Server::port()` |
+| `Server::is_apache()`, `is_nginx()`, `is_litespeed()`, `is_iis()`, `supports_htaccess()`, `has_mod_rewrite()`, `supports_url_rewriting()`, `supports_gzip()`, `has_xsendfile()`, `has_apache_module()` | `Server::` the same |
+| `Server::get_apache_modules()` | `Server::apache_modules()` |
+| `Server::is_cloudflare()` | `( new Cloudflare( IP::trust() ) )->is_active()` -- believed only from Cloudflare's addresses |
+| `ArrayPress\ServerUtils\PHP::get_version()`, `meets_version_requirement()` | `SugarCommerce\Network\Php::version()`, `Php::meets_version()` |
+| `PHP::get_memory_limit_bytes()`, `get_max_execution_time()`, `get_upload_max_filesize_bytes()`, `get_post_max_size_bytes()`, `get_max_input_vars()` | `Php::memory_limit()`, `max_execution_time()`, `upload_max_filesize()`, `post_max_size()`, `max_input_vars()` |
+| `PHP::has_extension()`, `get_missing_extensions()`, `has_function()`, `are_uploads_enabled()`, `is_url_fopen_enabled()`, `has_sufficient_memory()` | `Php::has_extension()`, `missing_extensions()`, `has_function()`, `uploads_enabled()`, `url_fopen_enabled()`, `has_memory()` |
+| `ArrayPress\ServerUtils\System::get_disk_space()`, `has_sufficient_disk_space()`, `get_temp_dir()`, `is_windows()`, `is_linux()`, `is_macos()` | `SugarCommerce\Network\Disk::space()`, `has_space()`, `temp_dir()`, `is_windows()`, `is_linux()`, `is_macos()` |
+| `ArrayPress\ServerUtils\Environment::get_type()`, `is_localhost()`, `is_staging()`, `is_development()`, `is_production()` | `SugarCommerce\Network\Environment::type()`, `is_local()`, `is_staging()`, `is_development()`, `is_production()` |
+| `Environment::TYPE_LOCALHOST`, `TYPE_STAGING`, `TYPE_PRODUCTION`, `TYPE_DEVELOPMENT` | `Environment::LOCAL`, `STAGING`, `PRODUCTION`, `DEVELOPMENT` |
 
 What moved, because two libraries each had one:
 
@@ -322,6 +417,10 @@ loaded first:
 | `get_referrer_search_terms( $url )` | `Referrer::get_search_terms( $url ) ?? ''` |
 | `parse_email( $email )` | `Email::parse( $email )` |
 | `sanitize_email_list( $input )` | `Email::sanitize_pattern_list( $input, true )` |
+| `get_accept_language()` | `AcceptLanguage::get_primary()` |
+| `get_preferred_language( $available, $fallback )` | `AcceptLanguage::get_best_match( $available, $fallback )` |
+| `accepts_language( $lang, $exact )` | `AcceptLanguage::accepts( $lang, $exact )` |
+| `is_rtl_language()` | `AcceptLanguage::is_rtl()` |
 
 Names in the site's configuration, and the text domain:
 
@@ -331,6 +430,7 @@ Names in the site's configuration, and the text domain:
 | `arraypress_trusted_proxies` filter | `sugarcommerce_trusted_proxies` |
 | `arraypress_referrer_{search_engine,social_platform,ai_assistant,email_provider,traffic_source,utm_parameter}_options` | `sugarcommerce_referrer_..._options` |
 | `visitor_country_sources`, `visitor_country_result` | unchanged; `Country::use_prefix()` renames them |
+| `server_nginx_xsendfile` filter | `sugarcommerce_nginx_xsendfile` |
 | text domain `arraypress` | `sugarcommerce` |
 
 Answers that changed:
@@ -340,6 +440,16 @@ Answers that changed:
 * `Referrer::safe_url()` refuses a referrer that is not valid UTF-8.
 * `UserAgent::current()`, `Request::agent()` and `ClientHints` treat an array where a header should be as nothing, not "Array"; `UserAgent::current()` reads the live request unslashed.
 * `ClientHints::brands()` returns at most `ClientHints::MAX_BRANDS` (8).
+* `AcceptLanguage::normalize()` follows BCP 47's casing: `zh-Hant-TW`, not `zh-HANT-TW`; `en-US-posix`, not `en-US-POSIX`. `extract_region()` skips a script, so `zh-Hant-TW` is `TW`, not `HANT`, and `zh-Hant` has none.
+* `AcceptLanguage` reads only the first 50 entries of the first 1,000 bytes of the header.
+* `AcceptLanguage::is_rtl()` also reads a script: `az-Arab` is right to left, `ku-Latn` is not.
+* `Environment` asks WordPress first: a site that set `WP_ENVIRONMENT_TYPE` is that type whatever its address says, and `WP_DEBUG` on a declared production site no longer makes it development. Its local type is `"local"` (WordPress's word), not `"localhost"`.
+* `Environment` no longer treats `*.dev` as local -- it is a real public ending. A private or reserved address, `*.localhost`, `*.example` and `*.invalid` are local.
+* Exactly one of `is_local()`, `is_staging()`, `is_development()` and `is_production()` is true: a `staging.mysite.test` site is local and not also staging.
+* `Server::software()` reads the request each time; there is no static cache. `Server::port()` is 1-65535, else 443 or 80 by HTTPS; it used to cast whatever was there.
+* `Server::has_mod_rewrite()` also reads `REDIRECT_HTTP_MOD_REWRITE`, and the variable from the request as well as the environment.
+* `Disk::space()` on a disk reporting no size is 0% full rather than a division by zero. The operating system is read from `PHP_OS_FAMILY`.
+* `Php::max_upload_size()` is new: the number an upload form needs.
 
 ## Requirements
 

@@ -1,6 +1,6 @@
 {
   "name": "sugarcommerce/network",
-  "description": "Who a WordPress request is from: the visitor's real IP behind proxies, their country, browser and bots, where they came from, and the email address they gave.",
+  "description": "Who a WordPress request is from: the visitor's real IP behind proxies, their country, language, browser and bots, where they came from, and the email address they gave -- and what the site runs on: web server, PHP limits, disk and environment.",
   "type": "library",
   "license": "GPL-2.0-or-later",
   "homepage": "https://github.com/sugarcommerce/network",
@@ -46,7 +46,10 @@
     "utm",
     "attribution",
     "email",
-    "gdpr"
+    "gdpr",
+    "accept-language",
+    "server",
+    "environment"
   ],
   "require-dev": {
     "phpcompatibility/phpcompatibility-wp": "^2.1",
