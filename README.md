@@ -101,6 +101,7 @@ a webhook URL.
 
 ```php
 IP::anonymize( '203.0.113.42' );             // "203.0.113.0"
+IP::anonymize( '2001:db8:85a3:8d3:1319:8a2e:370:7348' ); // "2001:db8:85a3:8d3::" -- the /64, as core keeps
 IP::anonymized_cidr( '2001:db8:85a3::1' );   // "2001:db8:85a3::/48" -- plainly a network
 IP::hash( $ip, wp_salt( 'auth' ) );          // HMAC-SHA256: count visitors, store none
 ```

@@ -388,7 +388,14 @@ class IP {
 	}
 
 	/**
-	 * Anonymize an IP address by zeroing out the last octet (IPv4) or the last group (IPv6).
+	 * Anonymize an IP address the way WordPress's privacy tools do.
+	 *
+	 * IPv4 loses its last octet (a /24) and IPv6 keeps only its /64 network
+	 * prefix, which is what core's wp_privacy_anonymize_ip() does -- and what
+	 * this now hands over to when WordPress is loaded. Zeroing only the last
+	 * IPv6 group, as this used to, kept a /112: one household, not anonymous.
+	 * An IPv4-mapped IPv6 address ("::ffff:203.0.113.42") is treated as the
+	 * IPv4 address it carries, as core does.
 	 *
 	 * @param string $ip The IP address to anonymize.
 	 *
@@ -399,21 +406,42 @@ class IP {
 			return null;
 		}
 
+		if ( function_exists( 'wp_privacy_anonymize_ip' ) ) {
+			return wp_privacy_anonymize_ip( $ip );
+		}
+
+		return self::anonymize_without_core( $ip );
+	}
+
+	/**
+	 * Core's wp_privacy_anonymize_ip() for a valid address, for when
+	 * WordPress is not loaded.
+	 *
+	 * @param string $ip A valid IPv4 or IPv6 address.
+	 *
+	 * @return string|null The anonymized address.
+	 */
+	private static function anonymize_without_core( string $ip ): ?string {
 		if ( self::is_valid_ipv4( $ip ) ) {
-			return preg_replace( '/\.\d+$/', '.0', $ip );
+			return substr( $ip, 0, (int) strrpos( $ip, '.' ) ) . '.0';
 		}
 
-		if ( self::is_valid_ipv6( $ip ) ) {
-			// Handle special case of all-zeros IPv6
-			if ( $ip === '::' ) {
-				return '::'; // Already all zeros, no need to change
-			}
+		// An IPv6 address carrying an IPv4 one: anonymize the IPv4 part.
+		if ( str_contains( $ip, '.' ) ) {
+			$v4 = substr( $ip, (int) strrpos( $ip, ':' ) + 1 );
 
-			// For all other IPv6 addresses, replace the last group with 0
-			return preg_replace( '/:[^:]*$/', ':0', $ip );
+			return '::ffff:' . substr( $v4, 0, (int) strrpos( $v4, '.' ) ) . '.0';
 		}
 
-		return null;
+		$packed = inet_pton( $ip );
+		$mask   = inet_pton( 'ffff:ffff:ffff:ffff::' );
+		if ( false === $packed || false === $mask ) {
+			return null;
+		}
+
+		$network = inet_ntop( $packed & $mask );
+
+		return false === $network ? null : $network;
 	}
 
 	// ========================================
@@ -857,8 +885,8 @@ class IP {
 	 * IPv4 keeps its first three octets, as {@see self::anonymize()} does.
 	 * IPv6 keeps its first 48 bits -- the site prefix, the masking analytics
 	 * tools use and European regulators have generally accepted -- which is
-	 * coarser than anonymize()'s last group, because a /112 of IPv6 is still
-	 * one household.
+	 * coarser than anonymize()'s /64 (core's choice), and says plainly in
+	 * its "/48" that it is a network rather than an address.
 	 *
 	 * @since 1.0.0
 	 *
