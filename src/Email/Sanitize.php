@@ -107,27 +107,84 @@ trait Sanitize {
 	 *
 	 * Takes a string and not a parsed address, so that an address too odd
 	 * to validate -- but that somebody did type -- can still be shown
-	 * masked. Only the shape is required: something, an @, something.
+	 * masked. Only the shape is required: something, an @, something. It is
+	 * split at the last `@`: a domain cannot hold one and a quoted name can.
 	 *
-	 * @param string $email  The address.
-	 * @param string $mask   The character that hides the name.
-	 * @param int    $hidden How many of them, whatever the name's length.
+	 * For an admin list that should look like the address it hides, keep
+	 * two characters and let the run follow the name's length, with
+	 * `$hidden` as its least -- and show whatever is stored when it is not
+	 * an address at all:
 	 *
-	 * @return string The masked address, or '' when there is no name or
-	 *                no domain to show.
+	 *     Email::mask( $email, keep: 2, show_length: true, keep_invalid: true );   // "ge••••@gmail.com"
+	 *
+	 * @param string $email        The address.
+	 * @param string $mask         The character that hides the name.
+	 * @param int    $hidden       How many of them, whatever the name's length;
+	 *                             the fewest, with $show_length. At least one.
+	 * @param int    $keep         How many characters of the name to show, at
+	 *                             most all of it. At least one.
+	 * @param bool   $keep_invalid Hand back what is not an address -- no `@`,
+	 *                             nothing before it or after it -- as given,
+	 *                             rather than ''. For a list cell that shows
+	 *                             whatever is stored.
+	 * @param bool   $show_length  One mask character per hidden one, so the
+	 *                             mask is as long as the name it hides.
+	 *
+	 * @return string The masked address; '' (or $email, with $keep_invalid)
+	 *                when there is no name or no domain to show.
 	 */
-	public static function mask( string $email, string $mask = '•', int $hidden = 2 ): string {
-		$email = trim( $email );
-		$at    = strrpos( $email, '@' );
+	public static function mask( string $email, string $mask = '•', int $hidden = 2, int $keep = 1, bool $keep_invalid = false, bool $show_length = false ): string {
+		$trimmed = trim( $email );
+		$at      = strrpos( $trimmed, '@' );
 
-		if ( false === $at || $at < 1 || strlen( $email ) - 1 === $at ) {
-			return '';
+		if ( false === $at || $at < 1 || strlen( $trimmed ) - 1 === $at ) {
+			return $keep_invalid ? $email : '';
 		}
 
 		// By character, not by byte: half of a multibyte letter is not
 		// a letter.
-		$first = function_exists( 'mb_substr' ) ? mb_substr( $email, 0, 1, 'UTF-8' ) : substr( $email, 0, 1 );
+		$name   = substr( $trimmed, 0, $at );
+		$length = mb_strlen( $name, 'UTF-8' );
+		$shown  = mb_substr( $name, 0, max( 1, $keep ), 'UTF-8' );
+		$run    = max( 1, $hidden );
 
-		return $first . str_repeat( $mask, max( 1, $hidden ) ) . strtolower( substr( $email, $at ) );
+		if ( $show_length ) {
+			$run = max( $run, $length - mb_strlen( $shown, 'UTF-8' ) );
+		}
+
+		return $shown . str_repeat( $mask, $run ) . strtolower( substr( $trimmed, $at ) );
+	}
+
+	/**
+	 * A valid address as it was typed, with only the domain lower-cased.
+	 *
+	 * The name keeps its case, because RFC 5321 says it is significant and
+	 * some mail servers mean it; the domain is lower-cased because it is
+	 * not. {@see self::sanitize_email()} lower-cases the whole address,
+	 * which is right for a key to compare on and wrong for the address to
+	 * send to.
+	 *
+	 * Longer than 254 characters is refused, not cut: the first 254
+	 * characters of something are a different address, possibly somebody
+	 * else's. Anything that is not a string -- an array posted where an
+	 * address was expected -- is nothing, never "Array".
+	 *
+	 * @since 1.0.0
+	 *
+	 * @param mixed $value What was typed.
+	 *
+	 * @return string The address, or '' when it is not one.
+	 */
+	public static function clean( mixed $value ): string {
+		$value = is_string( $value ) ? trim( $value ) : '';
+		$at    = strrpos( $value, '@' );
+
+		if ( false === $at || mb_strlen( $value, 'UTF-8' ) > 254 ) {
+			return '';
+		}
+
+		$value = substr( $value, 0, $at ) . '@' . strtolower( substr( $value, $at + 1 ) );
+
+		return self::validate_email( $value ) ? $value : '';
 	}
 }

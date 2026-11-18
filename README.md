@@ -245,6 +245,15 @@ $email->has_typo() && $email->suggested_email();     // "pat@gmial.com" -> "pat@
 $email->equals_base( $existing );                    // the same customer with a +tag
 $email->is_role_based();                             // info@, sales@
 Email::mask( 'patricia@example.com' );               // "p••@example.com"
+Email::clean( 'Jordan@EXAMPLE.COM' );                // "Jordan@example.com" -- the name's case is kept
+```
+
+`mask()` splits at the last `@` and hides how long the name is. For an admin
+list that should look like what it hides, and show whatever is stored when
+it is not an address:
+
+```php
+Email::mask( $email, keep: 2, show_length: true, keep_invalid: true );   // "ge••••@gmail.com", "nope"
 ```
 
 ## Blocklists
