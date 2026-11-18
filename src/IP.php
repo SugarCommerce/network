@@ -198,6 +198,12 @@ class IP {
 	 *       return [ '203.0.113.5' ];
 	 *   } );
 	 *
+	 * The older names, `ARRAYPRESS_TRUSTED_PROXIES` and the
+	 * `arraypress_trusted_proxies` filter, are still read for sites that
+	 * set them: both constants' lists are joined, and the old filter runs
+	 * before the new one, so each sees the other's work. The new names are
+	 * the ones to use.
+	 *
 	 * Set it to an empty list when the application is reached directly —
 	 * then no forwarding header is ever believed, which is the safest
 	 * configuration and the correct one without a proxy.
@@ -211,26 +217,49 @@ class IP {
 	 * @since  1.1.0
 	 * @since  1.3.0 The private IPv6 range is fc00::/7, all of RFC 4193,
 	 *               where it was fd00::/8, the half in use.
+	 * @since  1.4.0 Also reads ARRAYPRESS_TRUSTED_PROXIES and the
+	 *               arraypress_trusted_proxies filter.
 	 */
 	public static function trusted_proxies(): array {
 		$proxies = array_merge( TrustedProxies::LOCAL, TrustedProxies::CLOUDFLARE );
 
-		if ( defined( 'SUGARCOMMERCE_TRUSTED_PROXIES' ) ) {
-			$configured = constant( 'SUGARCOMMERCE_TRUSTED_PROXIES' );
-			$proxies    = is_array( $configured )
-				? $configured
-				: array_filter( array_map( 'trim', explode( ',', (string) $configured ) ) );
+		$constants = [ 'SUGARCOMMERCE_TRUSTED_PROXIES', 'ARRAYPRESS_TRUSTED_PROXIES' ];
+		$defined   = array_filter( $constants, 'defined' );
+
+		if ( $defined ) {
+			$proxies = [];
+
+			foreach ( $defined as $name ) {
+				$proxies = array_merge( $proxies, self::configured_proxies( constant( $name ) ) );
+			}
+
+			$proxies = array_values( array_unique( $proxies ) );
 		}
 
 		if ( function_exists( 'apply_filters' ) ) {
-			$filtered = apply_filters( 'sugarcommerce_trusted_proxies', $proxies );
+			foreach ( [ 'arraypress_trusted_proxies', 'sugarcommerce_trusted_proxies' ] as $hook ) {
+				$filtered = apply_filters( $hook, $proxies );
 
-			if ( is_array( $filtered ) ) {
-				$proxies = $filtered;
+				if ( is_array( $filtered ) ) {
+					$proxies = $filtered;
+				}
 			}
 		}
 
 		return $proxies;
+	}
+
+	/**
+	 * Read a trusted-proxies constant: a list, or a comma-separated string.
+	 *
+	 * @param mixed $configured The constant's value.
+	 *
+	 * @return array List of IPs and ranges.
+	 */
+	private static function configured_proxies( $configured ): array {
+		return is_array( $configured )
+			? $configured
+			: array_filter( array_map( 'trim', explode( ',', (string) $configured ) ) );
 	}
 
 	/**

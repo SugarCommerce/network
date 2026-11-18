@@ -79,7 +79,10 @@ local proxy at once, and returns null for a private address unless
 `IP::get( true )`. Its list can be set site-wide with
 `define( 'SUGARCOMMERCE_TRUSTED_PROXIES', '203.0.113.5,198.51.100.0/24' )` or
 the `sugarcommerce_trusted_proxies` filter, and `IP::trust()` hands that list
-to anything else that should believe what it believes.
+to anything else that should believe what it believes. The new names are the
+ones to use; `ARRAYPRESS_TRUSTED_PROXIES` and the `arraypress_trusted_proxies`
+filter are still read for sites that already set them (both constants' lists
+are joined, and the old filter runs before the new one).
 
 ## Addresses and ranges
 
@@ -501,8 +504,8 @@ Names in the site's configuration, and the text domain:
 
 | Was | Now |
 |---|---|
-| `ARRAYPRESS_TRUSTED_PROXIES` | `SUGARCOMMERCE_TRUSTED_PROXIES` |
-| `arraypress_trusted_proxies` filter | `sugarcommerce_trusted_proxies` |
+| `ARRAYPRESS_TRUSTED_PROXIES` | `SUGARCOMMERCE_TRUSTED_PROXIES` (the old name is still read) |
+| `arraypress_trusted_proxies` filter | `sugarcommerce_trusted_proxies` (the old filter still runs) |
 | `arraypress_referrer_{search_engine,social_platform,ai_assistant,email_provider,traffic_source,utm_parameter}_options` | `sugarcommerce_referrer_..._options` |
 | `visitor_country_sources`, `visitor_country_result` | unchanged; `Country::use_prefix()` renames them |
 | `server_nginx_xsendfile` filter | `sugarcommerce_nginx_xsendfile` |
