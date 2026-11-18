@@ -58,6 +58,12 @@ final class PublicTest extends TestCase {
 			'loopback'          => [ '127.0.0.1' ],
 			'IPv6 loopback'     => [ '::1' ],
 			'unspecified'       => [ '::' ],
+			'v4-compatible'     => [ '::a9fe:a9fe' ],
+			'SIIT metadata'     => [ '::ffff:0:a9fe:a9fe' ],
+			'SIIT, public v4'   => [ '::ffff:0:808:808' ],
+			'IPv6 docs, new'    => [ '3fff::1' ],
+			'segment routing'   => [ '5f00::1' ],
+			'site-local'        => [ 'fec0::1' ],
 			'not an address'    => [ 'nonsense' ],
 			'empty'             => [ '' ],
 		];

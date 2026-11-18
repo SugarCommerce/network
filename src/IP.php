@@ -42,9 +42,12 @@ class IP {
 	 *
 	 * Carrier-grade NAT, the IETF protocol and documentation blocks,
 	 * benchmarking, 6to4 relay anycast, multicast and class E for IPv4; for
-	 * IPv6 the discard prefix, the IETF protocol block (Teredo and ORCHID
-	 * among it), documentation, local-use NAT64, unique local, link-local
-	 * and multicast. See {@see self::is_public()}.
+	 * IPv6 all of the IPv4-compatible block (`::/96`, loopback and
+	 * unspecified with it), SIIT (`::ffff:0:0:0/96`, which carries an IPv4
+	 * address the way a mapped one does), the discard prefix, the IETF
+	 * protocol block (Teredo and ORCHID among it), both documentation
+	 * blocks, segment routing, local-use NAT64, unique local, link-local,
+	 * the retired site-local block and multicast. See {@see self::is_public()}.
 	 */
 	private const NON_PUBLIC = [
 		'0.0.0.0/8',
@@ -57,14 +60,17 @@ class IP {
 		'203.0.113.0/24',
 		'224.0.0.0/4',
 		'240.0.0.0/4',
-		'::/128',
-		'::1/128',
+		'::/96',
+		'::ffff:0:0:0/96',
 		'100::/64',
 		'2001::/23',
 		'2001:db8::/32',
+		'3fff::/20',
+		'5f00::/16',
 		'64:ff9b:1::/48',
 		'fc00::/7',
 		'fe80::/10',
+		'fec0::/10',
 		'ff00::/8',
 	];
 
