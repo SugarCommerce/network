@@ -88,6 +88,8 @@ IP::canonical( '2001:DB8:0::1' );            // "2001:db8::1" -- one spelling to
 Range::normalize( '203.0.113.77/24' );       // "203.0.113.0/24"
 Range::normalize( '203.0.113.*' );           // "203.0.113.0/24"
 Range::normalize( '2001:db8:*' );            // "2001:db8::/32" -- groups left off the end are stars
+Range::normalize( '192.168.*' );             // "192.168.0.0/16" -- so are parts left off an IPv4 one
+Range::normalize( '2001:db8::*' );           // "2001:db8::/112" -- "::" is noughts, as in an address
 Range::contains_any( $rules, $ip );          // IPv4 and IPv6, any of the three forms
 Range::prefix( $typed ) >= 8;                // refuse a rule that blocks a continent
 IP::sanitize_pattern_list( $_POST['ips'] );  // one a line, or comma-separated

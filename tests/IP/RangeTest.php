@@ -55,7 +55,15 @@ final class RangeTest extends TestCase {
 			'an ipv6 star in the middle'       => [ '2001:*:0005', '2001:*:5' ],
 			'ipv6 trailing stars left off'     => [ '2001:*:5:*:*', '2001:*:5' ],
 			'an ipv6 star first'               => [ '*:db8:*:1', '*:db8:*:1' ],
-			'from and to'                      => [ '203.0.113.1-203.0.113.50', '203.0.113.1-203.0.113.50' ],
+			'three parts and a star'           => [ '203.0.*', '203.0.0.0/16' ],
+			'two parts and a star'             => [ '192.168.*', '192.168.0.0/16' ],
+			'one part and a star'              => [ '10.*', '10.0.0.0/8' ],
+			'short, a star in the middle'      => [ '203.*.7.*', '203.*.7.*' ],
+			'an ipv6 star in a gap'            => [ '2001:db8::*', '2001:db8::/112' ],
+			'an ipv6 gap, padded and upper'    => [ '2001:0DB8::*', '2001:db8::/112' ],
+			'an ipv6 gap, a star before it'    => [ '2001:*::1', '2001:*:0:0:0:0:0:1' ],
+			'a link-local gap'                 => [ 'fe80::*', 'fe80::/112' ],
+			'from and to'                   => [ '203.0.113.1-203.0.113.50', '203.0.113.1-203.0.113.50' ],
 			'from and to, with spaces'         => [ ' 203.0.113.1 - 203.0.113.50 ', '203.0.113.1-203.0.113.50' ],
 			'from and to, backwards'           => [ '203.0.113.50-203.0.113.1', '203.0.113.1-203.0.113.50' ],
 			'from and to, across a byte'       => [ '203.0.113.200-203.0.114.2', '203.0.113.200-203.0.114.2' ],
@@ -77,12 +85,18 @@ final class RangeTest extends TestCase {
 			'two slashes'                      => [ '203.0.113.0/24/8', null ],
 			'nothing but stars'                => [ '*.*.*.*', null ],
 			'one star'                         => [ '*', null ],
-			'three parts and a star'           => [ '203.0.*', null ],
+			'short, ending in a number'        => [ '203.*.113', null ],
+			'short, nothing but stars'         => [ '*.*', null ],
+			'short, a part too large'          => [ '256.*', null ],
 			'five parts'                       => [ '203.0.113.9.*', null ],
 			'a star part too large'            => [ '203.*.113.256', null ],
 			'half a star'                      => [ '203.0.113.1*', null ],
-			'an ipv6 star in a gap'            => [ '2001:db8::*', null ],
 			'nothing but ipv6 stars'           => [ '*:*', null ],
+			'a gap and a star'                 => [ '::*', null ],
+			'a gap between stars'              => [ '*::*', null ],
+			'two gaps'                         => [ '2001::db8::*', null ],
+			'a gap with no room'               => [ '2001:db8:1:2:3:4:5::*', null ],
+			'a triple colon'                   => [ '2001:::*', null ],
 			'nine ipv6 groups'                 => [ '2001:db8:1:2:3:4:5:6:*', null ],
 			'an ipv6 group too long'           => [ '2001:0db8a:*', null ],
 			'half an ipv6 star'                => [ '2001:db8*', null ],
@@ -150,7 +164,11 @@ final class RangeTest extends TestCase {
 			'an ipv6 star, padded'     => [ '2001:0DB8:*', [ '2001:db8:85a3::1' ], [ '2001:db9::1' ] ],
 			'an ipv6 star in between'  => [ '2001:*:5', [ '2001:aa:5::', '2001:ffff:5:1:2:3:4:5' ], [ '2001:aa:6::', '2002:aa:5::' ] ],
 			'an ipv6 star first'       => [ '*:db8:*:1', [ '2001:db8:7:1::', 'ffff:db8:0:1::9' ], [ '2001:db8:7:2::', '2001:db9:7:1::' ] ],
-			'from and to'              => [ '203.0.113.10-203.0.113.50', [ '203.0.113.10', '203.0.113.33', '203.0.113.50', '::ffff:203.0.113.20' ], [ '203.0.113.9', '203.0.113.51', '203.0.114.20', '2001:db8::1' ] ],
+			'a short star'             => [ '192.168.*', [ '192.168.0.0', '192.168.4.9', '192.168.255.255', '::ffff:192.168.1.1' ], [ '192.169.0.1', '192.167.255.255', '2001:db8::1' ] ],
+			'a one-part star'          => [ '10.*', [ '10.0.0.1', '10.255.255.255' ], [ '11.0.0.1', '1.10.0.0' ] ],
+			'an ipv6 star in a gap'    => [ '2001:db8::*', [ '2001:db8::', '2001:db8::5', '2001:db8::abcd', '2001:DB8:0:0:0:0:0:ffff' ], [ '2001:db8:1::5', '2001:db8::1:0', '2001:db9::5', '203.0.113.9' ] ],
+			'an ipv6 gap in between'   => [ '2001:*::1', [ '2001:db8::1', '2001:ffff::1' ], [ '2001:db8::2', '2001:db8:1::1' ] ],
+			'from and to'         => [ '203.0.113.10-203.0.113.50', [ '203.0.113.10', '203.0.113.33', '203.0.113.50', '::ffff:203.0.113.20' ], [ '203.0.113.9', '203.0.113.51', '203.0.114.20', '2001:db8::1' ] ],
 			'from and to, backwards'   => [ '203.0.113.50-203.0.113.10', [ '203.0.113.33' ], [ '203.0.113.51' ] ],
 			'across a byte'            => [ '203.0.113.200-203.0.114.2', [ '203.0.113.255', '203.0.114.0', '203.0.114.2' ], [ '203.0.114.3', '203.0.113.199' ] ],
 			'above half the family'    => [ '127.255.255.250-128.0.0.5', [ '127.255.255.255', '128.0.0.0' ], [ '128.0.0.6', '127.255.255.249' ] ],
@@ -185,7 +203,7 @@ final class RangeTest extends TestCase {
 	 * Nonsense on either side is a miss, never an error.
 	 */
 	public function test_contains_nothing_malformed(): void {
-		foreach ( [ '', 'nonsense', '203.0.113.0/33', '203.0.113.0/x', '*.*', '203.0.*', 'a-b', '203.0.113.1-2001:db8::1', '2001:db8::*', '*.*.*.*', '*:*' ] as $range ) {
+		foreach ( [ '', 'nonsense', '203.0.113.0/33', '203.0.113.0/x', '*.*', '203.*.113', 'a-b', '203.0.113.1-2001:db8::1', '::*', '*::*', '2001::db8::*', '*.*.*.*', '*:*' ] as $range ) {
 			$this->assertFalse( Range::contains( $range, '203.0.113.9' ), $range );
 			$this->assertFalse( Range::contains( $range, '2001:db8::1' ), $range );
 		}

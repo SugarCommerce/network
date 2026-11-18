@@ -22,9 +22,10 @@ namespace SugarCommerce\Network;
  *
  *  - with a prefix, `203.0.113.0/24` or `2001:db8::/32`;
  *  - with stars, `203.0.113.*` or `203.*.113.9`, a star standing for one
- *    whole part. In IPv6 every group is written out (`2001:db8:*`, never
- *    `2001:db8::*`, which hides how many groups the gap is), and groups
- *    left off the end are stars: `2001:db8:*` is `2001:db8::/32`;
+ *    whole part. Parts left off the end of a pattern are stars:
+ *    `192.168.*` is `192.168.0.0/16` and `2001:db8:*` is `2001:db8::/32`.
+ *    A "::" in an IPv6 pattern is noughts, as it is in an address:
+ *    `2001:db8::*` is `2001:db8::/112`;
  *  - from one address to another, `203.0.113.1-203.0.113.50`, in either
  *    family -- how a hosting company's abuse desk writes one in an email.
  *
@@ -329,8 +330,8 @@ class Range {
 
 	/**
 	 * The parts of a pattern with stars in it, each a star or a number in
-	 * its plain form: four for IPv4, eight for IPv6, the groups an IPv6
-	 * pattern leaves off the end filled in as stars.
+	 * its plain form: four for IPv4, eight for IPv6, the parts a pattern
+	 * leaves off the end filled in as stars and an IPv6 gap as noughts.
 	 *
 	 * @param string $range The pattern.
 	 *
@@ -341,23 +342,35 @@ class Range {
 	 */
 	private static function wildcard_parts( string $range ): ?array {
 		if ( str_contains( $range, ':' ) ) {
-			// Every group written out: "::" hides how many groups it is.
-			if ( 1 !== preg_match( '/^(?:[0-9a-f]{1,4}|\*)(?::(?:[0-9a-f]{1,4}|\*)){1,7}$/Di', $range ) ) {
+			$groups = str_contains( $range, '::' ) ? self::wildcard_gap( $range ) : self::wildcard_groups( $range );
+
+			if ( null === $groups ) {
 				return null;
 			}
 
 			// "0DB8" and "db8" are one group, and must be one rule.
 			$parts = array_map(
 				static fn( string $part ): string => '*' === $part ? '*' : ( ltrim( strtolower( $part ), '0' ) ?: '0' ),
-				explode( ':', $range )
+				$groups
 			);
 			$parts = array_pad( $parts, 8, '*' );
 		} else {
-			if ( 1 !== preg_match( '/^(?:\d{1,3}|\*)(?:\.(?:\d{1,3}|\*)){3}$/D', $range ) ) {
+			if ( 1 !== preg_match( '/^(?:\d{1,3}|\*)(?:\.(?:\d{1,3}|\*)){0,3}$/D', $range ) ) {
 				return null;
 			}
 
 			$parts = explode( '.', $range );
+
+			// Parts left off the end of a pattern ending in a star are stars,
+			// as in IPv6: "192.168.*" is 192.168.*.*. One that stops at a
+			// number ("203.*.113") is a mistyped address, not a range.
+			if ( count( $parts ) < 4 ) {
+				if ( '*' !== end( $parts ) ) {
+					return null;
+				}
+
+				$parts = array_pad( $parts, 4, '*' );
+			}
 
 			foreach ( $parts as $index => $part ) {
 				if ( '*' === $part ) {
@@ -374,6 +387,62 @@ class Range {
 		}
 
 		return count( $parts ) === count( array_keys( $parts, '*', true ) ) ? null : $parts;
+	}
+
+	/**
+	 * The groups of an IPv6 pattern written without a gap: two to eight,
+	 * each one to four hex digits or a star.
+	 *
+	 * @param string $range The pattern.
+	 *
+	 * @return array|null
+	 */
+	private static function wildcard_groups( string $range ): ?array {
+		if ( 1 !== preg_match( '/^(?:[0-9a-f]{1,4}|\*)(?::(?:[0-9a-f]{1,4}|\*)){1,7}$/Di', $range ) ) {
+			return null;
+		}
+
+		return explode( ':', $range );
+	}
+
+	/**
+	 * The eight groups of an IPv6 pattern with a gap in it.
+	 *
+	 * "::" is noughts, exactly as in an address: `2001:db8::*` is
+	 * `2001:db8:0:0:0:0:0:*`, the addresses written `2001:db8::` and one
+	 * more group -- what the old text matcher took it to mean, which saved
+	 * lists rely on. A number has to be written beside the gap, so `::*`
+	 * and `*::*` are not ranges.
+	 *
+	 * @param string $range The pattern.
+	 *
+	 * @return array|null Null for more than one gap, a gap with no group
+	 *                    left for it to stand for, or no number written.
+	 */
+	private static function wildcard_gap( string $range ): ?array {
+		$halves = explode( '::', $range );
+
+		if ( 2 !== count( $halves ) ) {
+			return null;
+		}
+
+		$sides = [];
+
+		foreach ( $halves as $half ) {
+			if ( '' !== $half && 1 !== preg_match( '/^(?:[0-9a-f]{1,4}|\*)(?::(?:[0-9a-f]{1,4}|\*)){0,6}$/Di', $half ) ) {
+				return null;
+			}
+
+			$sides[] = '' === $half ? [] : explode( ':', $half );
+		}
+
+		$gap = 8 - count( $sides[0] ) - count( $sides[1] );
+
+		if ( $gap < 1 || [] === array_diff( array_merge( $sides[0], $sides[1] ), [ '*' ] ) ) {
+			return null;
+		}
+
+		return array_merge( $sides[0], array_fill( 0, $gap, '0' ), $sides[1] );
 	}
 
 	/**

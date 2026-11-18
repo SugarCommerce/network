@@ -458,7 +458,7 @@ class IP {
 	 * Valid patterns are what {@see Range} reads:
 	 * - Single IP: 192.168.1.1
 	 * - CIDR range: 192.168.1.0/24
-	 * - Wildcard: 192.168.*.* or 2001:db8:*
+	 * - Wildcard: 192.168.*.*, 192.168.*, 2001:db8:* or 2001:db8::*
 	 * - From one address to another: 192.168.1.1-192.168.1.50
 	 *
 	 * The same reading is_match() uses, so a pattern that matches is never

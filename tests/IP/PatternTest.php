@@ -57,6 +57,8 @@ final class PatternTest extends TestCase {
 			'wildcard pair' => [ '192.168.*.*' ],
 			'ipv6 wildcard' => [ '2001:db8:*' ],
 			'from and to'   => [ '192.168.1.1-192.168.1.50' ],
+			'short v4 wildcard' => [ '192.168.*' ],
+			'v6 wildcard gap'   => [ '2001:db8::*' ],
 		];
 	}
 
@@ -69,6 +71,35 @@ final class PatternTest extends TestCase {
 		$this->assertTrue( IP::is_match( '192.168.4.9', $list ) );
 		$this->assertTrue( IP::is_match( '203.0.113.5', $list ) );
 		$this->assertFalse( IP::is_match( '198.51.100.1', $list ) );
+	}
+
+	/**
+	 * Wildcards saved under the old text matcher are still kept, and match.
+	 *
+	 * Stores have `192.168.*` and `2001:db8::*` saved in their lists. A
+	 * short IPv4 pattern covers the parts it leaves off; an IPv6 gap is
+	 * noughts, as it always was, so every address the old matcher took in
+	 * is still taken in -- written in hex too, which it missed.
+	 */
+	public function test_old_saved_wildcards_keep_matching(): void {
+		$list = IP::sanitize_pattern_list( "192.168.*\n2001:db8::*\n10.*", true );
+
+		$this->assertSame( "192.168.*\n2001:db8::*\n10.*", $list );
+
+		$list = explode( "\n", $list );
+
+		foreach ( [ '192.168.0.1', '192.168.4.9', '192.168.255.255', '2001:db8::5', '2001:db8::1234', '2001:db8::abcd', '10.20.30.40' ] as $ip ) {
+			$this->assertTrue( IP::is_match( $ip, $list ), $ip );
+		}
+
+		foreach ( [ '192.169.0.1', '2001:db8:1::5', '2001:db9::5', '11.0.0.1' ] as $ip ) {
+			$this->assertFalse( IP::is_match( $ip, $list ), $ip );
+		}
+
+		$this->assertTrue( IP::matches_wildcard( '192.168.7.7', '192.168.*' ) );
+		$this->assertTrue( IP::matches_wildcard( '2001:db8::5', '2001:db8::*' ) );
+		$this->assertTrue( IP::is_valid_wildcard( '192.168.*' ) );
+		$this->assertTrue( IP::is_valid_wildcard( '2001:db8::*' ) );
 	}
 
 	/**
@@ -125,8 +156,11 @@ final class PatternTest extends TestCase {
 			'all wildcards v4' => [ '*.*.*.*' ],
 			'all wildcards v6' => [ '*:*' ],
 			'wildcard words'   => [ 'evil*.example.com' ],
-			'v6 wildcard gap'  => [ '2001:db8::*' ],
-			'short v4 wildcard' => [ '192.168.*' ],
+			'v6 gap of stars'  => [ '*::*' ],
+			'v6 gap and star'  => [ '::*' ],
+			'two v6 gaps'      => [ '2001::db8::*' ],
+			'short v4 number'  => [ '192.*.1' ],
+			'short v4 stars'   => [ '*.*' ],
 		];
 	}
 
