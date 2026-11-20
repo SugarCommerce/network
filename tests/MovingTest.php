@@ -21,13 +21,13 @@ use SugarCommerce\Network\Server;
 use PHPUnit\Framework\TestCase;
 
 /**
- * The README's "Moving from arraypress/wp-*" table, for the helpers.
+ * The static calls that answer what the old global helpers answered.
  *
  * The old libraries each declared a few global functions. A global function
  * is the one thing Strauss cannot prefix, so two plugins bundling different
  * copies shared whichever loaded first -- and parse_email() in one plugin
  * handed back the other plugin's Email. This library declares none; each
- * row of the table is the static call that gives the same answer, and each
+ * test below is the static call that gives the same answer, and each
  * is checked here against what the helper promised.
  */
 final class MovingTest extends TestCase {

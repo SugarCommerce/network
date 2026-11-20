@@ -74,15 +74,13 @@ ClientIp::resolve( null, TrustedProxies::local() );           // nginx or Caddy 
 ClientIp::resolve( null, TrustedProxies::none()->and_also( [ '198.51.100.7' ] ) );
 ```
 
-`IP::get()` is the older call, kept as it was: it trusts Cloudflare and a
-local proxy at once, and returns null for a private address unless
-`IP::get( true )`. Its list can be set site-wide with
-`define( 'SUGARCOMMERCE_TRUSTED_PROXIES', '203.0.113.5,198.51.100.0/24' )` or
-the `sugarcommerce_trusted_proxies` filter, and `IP::trust()` hands that list
-to anything else that should believe what it believes. The new names are the
-ones to use; `ARRAYPRESS_TRUSTED_PROXIES` and the `arraypress_trusted_proxies`
-filter are still read for sites that already set them (both constants' lists
-are joined, and the old filter runs before the new one).
+`IP::get()` is the older call: it trusts Cloudflare and a local proxy at
+once, and returns null for a private address unless `IP::get( true )`. It reads
+`CF-Connecting-IP` only from Cloudflare's own addresses, then
+`X-Forwarded-For`, then `X-Real-IP` and `Client-IP`. Its list can be set
+site-wide with `define( 'SUGARCOMMERCE_TRUSTED_PROXIES', '203.0.113.5,198.51.100.0/24' )`
+or the `sugarcommerce_trusted_proxies` filter, and `IP::trust()` hands that
+list to anything else that should believe what it believes.
 
 ## Addresses and ranges
 
@@ -423,113 +421,30 @@ options table to be found by name.
 `Referrer\Icons` finds its pictures' URL with `SugarCommerce\Plugin\Assets`,
 the family's one asset resolver.
 
-## Moving from arraypress/wp-*
+## Layout
 
-This library is `wp-ip-utils`, `wp-user-agent-utils`, `wp-referrer-utils`,
-`wp-email-utils`, `wp-visitor-country`, `wp-accept-language-utils` and
-`wp-server-utils` in one, with `arraypress/email-validator`'s check in `Email`. Every class keeps its name
-and its methods, under `SugarCommerce\Network`:
+Each class a consumer calls is at the top of `src/`. Folders hold what belongs
+to one of them: `Country/` (the sources a country is read from), `Email/` (the
+address's parts and the lists it is checked against), `Referrer/` (the source
+tables, first-touch attribution and icons), `Remote/` (the base for a
+third-party API client) and `UserAgent/` (the agent tables). A class with more
+than one job keeps one trait per job in `src/Traits/<Class>/`: `IP`,
+`Referrer`, `UserAgent` and `AcceptLanguage`.
 
-| Was | Now |
-|---|---|
-| `ArrayPress\IPUtils\{IP, IPs, Range, ClientIp, TrustedProxies}` | `SugarCommerce\Network\{...}` |
-| `ArrayPress\UserAgentUtils\{UserAgent, ClientHints, Request}` | `SugarCommerce\Network\{...}` |
-| `ArrayPress\ReferrerUtils\Referrer` | `SugarCommerce\Network\Referrer` |
-| `ArrayPress\ReferrerUtils\{Sources, Campaigns, Tracking, Icons, FirstTouch}` | `SugarCommerce\Network\Referrer\{...}` |
-| `ArrayPress\EmailUtils\Email` | `SugarCommerce\Network\Email` |
-| `ArrayPress\EmailUtils\Data\*` | `SugarCommerce\Network\Email\Data\*` |
-| `ArrayPress\EmailUtils\Traits\*` | `SugarCommerce\Network\Email\*` |
-| `ArrayPress\VisitorCountry\Country` | `SugarCommerce\Network\Country` |
-| `ArrayPress\VisitorCountry\{Result, Source}` | `SugarCommerce\Network\Country\{Result, Source}` |
-| `ArrayPress\VisitorCountry\Sources\*` | `SugarCommerce\Network\Country\Sources\*` |
-| `ArrayPress\AcceptLanguageUtils\AcceptLanguage` | `SugarCommerce\Network\AcceptLanguage` -- every method the same name |
+## Security
 
-`wp-server-utils`, renamed to read like the rest of the library:
-
-| Was | Now |
-|---|---|
-| `ArrayPress\ServerUtils\Server::get_software()` | `SugarCommerce\Network\Server::software()` |
-| `Server::get_ip()`, `get_port()` | `Server::address()`, `Server::port()` |
-| `Server::is_apache()`, `is_nginx()`, `is_litespeed()`, `is_iis()`, `supports_htaccess()`, `has_mod_rewrite()`, `supports_url_rewriting()`, `supports_gzip()`, `has_xsendfile()`, `has_apache_module()` | `Server::` the same |
-| `Server::get_apache_modules()` | `Server::apache_modules()` |
-| `Server::is_cloudflare()` | `( new Cloudflare( IP::trust() ) )->is_active()` -- believed only from Cloudflare's addresses |
-| `ArrayPress\ServerUtils\PHP::get_version()`, `meets_version_requirement()` | `SugarCommerce\Network\Php::version()`, `Php::meets_version()` |
-| `PHP::get_memory_limit_bytes()`, `get_max_execution_time()`, `get_upload_max_filesize_bytes()`, `get_post_max_size_bytes()`, `get_max_input_vars()` | `Php::memory_limit()`, `max_execution_time()`, `upload_max_filesize()`, `post_max_size()`, `max_input_vars()` |
-| `PHP::has_extension()`, `get_missing_extensions()`, `has_function()`, `are_uploads_enabled()`, `is_url_fopen_enabled()`, `has_sufficient_memory()` | `Php::has_extension()`, `missing_extensions()`, `has_function()`, `uploads_enabled()`, `url_fopen_enabled()`, `has_memory()` |
-| `ArrayPress\ServerUtils\System::get_disk_space()`, `has_sufficient_disk_space()`, `is_windows()`, `is_linux()`, `is_macos()` | `SugarCommerce\Network\Disk::space()`, `has_space()`, `is_windows()`, `is_linux()`, `is_macos()` |
-| `System::get_temp_dir()` | removed: use core's `get_temp_dir()`, which honours `WP_TEMP_DIR` and checks the folder is writable |
-| `ArrayPress\ServerUtils\Environment::get_type()`, `is_localhost()`, `is_staging()`, `is_development()`, `is_production()` | `SugarCommerce\Network\Environment::type()`, `is_local()`, `is_staging()`, `is_development()`, `is_production()` |
-| `Environment::TYPE_LOCALHOST`, `TYPE_STAGING`, `TYPE_PRODUCTION`, `TYPE_DEVELOPMENT` | `Environment::LOCAL`, `STAGING`, `PRODUCTION`, `DEVELOPMENT` |
-
-What moved, because two libraries each had one:
-
-| Was | Now |
-|---|---|
-| `IP::strip_port( $value )` | `Host::without_port( $value )` |
-| `IP::is_tor()` | `( new Cloudflare( IP::trust() ) )->is_tor()` -- or `( new Cloudflare() )` to believe Cloudflare's addresses only |
-| `IP::get_ray_id()` | `( new Cloudflare( IP::trust() ) )->ray_id()` -- null now unless shaped like a ray ID |
-| `Email::host_from( $value )` | `Host::from( $value )` |
-| `Email::domain_parents( $value )` | `Host::parents( $value )` |
-| `Email::domain_suffixes( $value )` | `Host::suffixes( $value )` |
-| `Email::is_hostname( $name )` | `Host::is_hostname( $name )` |
-| `Referrer::is_domain_or_subdomain( $host, $domain )` | `Host::is_within( $host, $domain )` -- also case-blind, and refuses a host no browser would go to |
-| `IP::is_in_range()`, `is_match()`, `matches_wildcard()` and their own CIDR and wildcard engine | the same names, reading with `Range` -- the engine is gone |
-| `SugarCommerce\IpLookup\{Service, Response}`, `SugarCommerce\Geocoding\{Service, Response}` | `SugarCommerce\Network\Remote\{Service, Response}` |
-
-The global helpers are gone. A global function is the one thing Strauss
-cannot prefix, so two plugins bundling different copies shared whichever
-loaded first:
-
-| Was | Now |
-|---|---|
-| `get_user_ip()` | `IP::get()` |
-| `anonymize_ip( $ip )` | `IP::anonymize( $ip )` |
-| `sanitize_ip_list( $input )` | `IP::sanitize_pattern_list( $input, true )` |
-| `get_user_agent()` | `Request::agent()` |
-| `get_referrer_url()` | `Referrer::get() ?? ''` |
-| `get_referrer_source( $url )` | `Referrer::get_source( $url )` |
-| `get_referrer_utm_params( $url )` | `Referrer::get_utm_parameters( $url )` |
-| `is_referrer_from_search( $url )` | `Referrer::is_search_engine( $url )` |
-| `get_referrer_search_terms( $url )` | `Referrer::get_search_terms( $url ) ?? ''` |
-| `parse_email( $email )` | `Email::parse( $email )` |
-| `sanitize_email_list( $input )` | `Email::sanitize_pattern_list( $input, true )` |
-| `is_valid_email( $email )` (arraypress/email-validator) | `Email::is_valid( $email )` |
-| `sanitize_email( $email )` (arraypress/email-validator) | WordPress's own `sanitize_email()` -- the old one stood in for it only where core was absent. Lower-cased and checked: `Email::sanitize_email( $email ) ?? ''` |
-| `get_accept_language()` | `AcceptLanguage::get_primary()` |
-| `get_preferred_language( $available, $fallback )` | `AcceptLanguage::get_best_match( $available, $fallback )` |
-| `accepts_language( $lang, $exact )` | `AcceptLanguage::accepts( $lang, $exact )` |
-| `is_rtl_language()` | `AcceptLanguage::is_rtl()` |
-
-Names in the site's configuration, and the text domain:
-
-| Was | Now |
-|---|---|
-| `ARRAYPRESS_TRUSTED_PROXIES` | `SUGARCOMMERCE_TRUSTED_PROXIES` (the old name is still read) |
-| `arraypress_trusted_proxies` filter | `sugarcommerce_trusted_proxies` (the old filter still runs) |
-| `arraypress_referrer_{search_engine,social_platform,ai_assistant,email_provider,traffic_source,utm_parameter}_options` | `sugarcommerce_referrer_..._options` |
-| `visitor_country_sources`, `visitor_country_result` | unchanged; `Country::use_prefix()` renames them |
-| `server_nginx_xsendfile` filter | `sugarcommerce_nginx_xsendfile` |
-| text domain `arraypress` | `sugarcommerce` |
-
-Answers that changed:
-
-* `Referrer::from_request()` with no argument reads the in-app browser from the request's agent. Pass `''` for none, as before.
-* `IP::sanitize_pattern_list()` splits text on commas as well as new lines.
-* `Referrer::safe_url()` refuses a referrer that is not valid UTF-8.
-* `UserAgent::current()`, `Request::agent()` and `ClientHints` treat an array where a header should be as nothing, not "Array"; `UserAgent::current()` reads the live request unslashed.
-* `ClientHints::brands()` returns at most `ClientHints::MAX_BRANDS` (8).
-* `AcceptLanguage::normalize()` follows BCP 47's casing: `zh-Hant-TW`, not `zh-HANT-TW`; `en-US-posix`, not `en-US-POSIX`. `extract_region()` skips a script, so `zh-Hant-TW` is `TW`, not `HANT`, and `zh-Hant` has none.
-* `AcceptLanguage` reads only the first 50 entries of the first 1,000 bytes of the header.
-* `AcceptLanguage::is_rtl()` also reads a script: `az-Arab` is right to left, `ku-Latn` is not.
-* `Environment` asks WordPress first: a site that set `WP_ENVIRONMENT_TYPE` is that type whatever its address says, and `WP_DEBUG` on a declared production site no longer makes it development. Its local type is `"local"` (WordPress's word), not `"localhost"`.
-* `Environment` no longer treats `*.dev` as local -- it is a real public ending. A private or reserved address, `*.localhost`, `*.example` and `*.invalid` are local.
-* Exactly one of `is_local()`, `is_staging()`, `is_development()` and `is_production()` is true: a `staging.mysite.test` site is local and not also staging.
-* `Server::software()` reads the request each time; there is no static cache. `Server::port()` is 1-65535, else 443 or 80 by HTTPS; it used to cast whatever was there.
-* `Server::has_mod_rewrite()` also reads `REDIRECT_HTTP_MOD_REWRITE`, and the variable from the request as well as the environment.
-* `Disk::space()` on a disk reporting no size is 0% full rather than a division by zero. The operating system is read from `PHP_OS_FAMILY`.
-* `Php::max_upload_size()`, briefly new, is gone: core's `wp_max_upload_size()` is the number WordPress enforces, after the `upload_size_limit` filter.
-* `IP::is_match()` compares an address in a list as an address (`2001:DB8::1` is `2001:db8::1`, `::ffff:203.0.113.9` is `203.0.113.9`), takes from-to ranges, and skips anything in the list that is not a string where it used to throw. An IPv6 wildcard names whole groups -- `2001:db8:*` -- where it used to match decimal digits in the address's own spelling; `2001:db8::*` (a gap of unknown length) and `192.168.*` (too few parts) never matched an address correctly and are no longer valid patterns. `*.*.*.*` matches nothing, as `is_valid_pattern()` already said.
-* `IP::is_valid_pattern()` accepts from-to ranges, because `is_match()` matches them.
+* A forwarding header is believed only from a proxy you named, read from the right, so a visitor cannot pick their own IP.
+* `CF-Connecting-IP` is believed only from Cloudflare's own addresses; a proxy of your own passes on whatever the visitor sent.
+* `IP::is_public()` refuses private, loopback, link-local, carrier NAT, documentation, multicast and reserved blocks in both families, and an IPv6 address carrying an IPv4 one (mapped, SIIT, NAT64, 6to4) by the address it carries -- the check webhook and API URLs are held to.
+* A country header counts only from the CDN's addresses when you name them, and only shaped as a country.
+* A referrer that is not http(s), not UTF-8 or over 2,048 characters is no referrer; one kept is percent-encoded so it cannot break out of a link.
+* UTM tags are cut to letters, digits and a little punctuation, 60 characters, and a click ID's value is never kept.
+* A first-touch cookie is size-capped, checked as JSON before it is decoded, cleaned field by field on every read, and never readable by script.
+* A user agent is capped at 512 characters and `Accept-Language` at 1,000 bytes and 50 entries before any pattern runs.
+* A domain longer than DNS allows is no domain, so taking an address's domain apart costs nothing however long it is.
+* A blocked domain matches with or without a trailing dot.
+* An address is hashed with a key, never a plain hash, and the key is refused when empty.
+* An API key is part of every cache key, so two accounts never share an answer.
 
 ## Requirements
 
