@@ -10,7 +10,7 @@ declare( strict_types=1 );
 namespace SugarCommerce\Network\Tests\Visit;
 
 use SugarCommerce\Network\TrustedProxies;
-use SugarCommerce\Network\Visit;
+use SugarCommerce\Network\Models\Visit;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 

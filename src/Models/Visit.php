@@ -12,9 +12,14 @@
 
 declare( strict_types=1 );
 
-namespace SugarCommerce\Network;
+namespace SugarCommerce\Network\Models;
 
+use SugarCommerce\Network\ClientIp;
 use SugarCommerce\Network\Country\Sources\Header;
+use SugarCommerce\Network\IP;
+use SugarCommerce\Network\Server;
+use SugarCommerce\Network\TrustedProxies;
+use SugarCommerce\Network\UserAgent;
 
 /**
  * Visit Class

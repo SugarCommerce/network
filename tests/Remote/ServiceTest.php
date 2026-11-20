@@ -14,7 +14,7 @@ declare( strict_types=1 );
 namespace SugarCommerce\Network\Tests\Remote;
 
 use PHPUnit\Framework\TestCase;
-use SugarCommerce\Network\Remote\Response;
+use SugarCommerce\Network\Models\Remote\Response;
 use SugarCommerce\Network\Remote\Service;
 use WP_Error;
 

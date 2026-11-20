@@ -10,7 +10,7 @@ declare( strict_types=1 );
 namespace SugarCommerce\Network\Tests\Country;
 
 use SugarCommerce\Network\Country;
-use SugarCommerce\Network\Country\Result;
+use SugarCommerce\Network\Models\Country\Result;
 use SugarCommerce\Network\Country\Sources\Cloudflare;
 use SugarCommerce\Network\Country\Sources\Generic;
 use SugarCommerce\Network\Country\Sources\Header;

@@ -11,7 +11,6 @@ declare( strict_types=1 );
 
 namespace SugarCommerce\Network;
 
-use SugarCommerce\Network\Country\Result;
 use SugarCommerce\Network\Country\Source;
 use SugarCommerce\Network\Country\Sources\BunnyCDN;
 use SugarCommerce\Network\Country\Sources\Callback;
@@ -20,6 +19,7 @@ use SugarCommerce\Network\Country\Sources\CloudFront;
 use SugarCommerce\Network\Country\Sources\Fastly;
 use SugarCommerce\Network\Country\Sources\Generic;
 use SugarCommerce\Network\Country\Sources\ServerGeoIP;
+use SugarCommerce\Network\Models\Country\Result;
 
 /**
  * Class Country

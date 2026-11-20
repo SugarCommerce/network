@@ -123,7 +123,7 @@ A visit for a download log or an audit trail, all at once -- two keyed hashes
 to count with, and a country, device and network a person may see:
 
 ```php
-use SugarCommerce\Network\Visit;
+use SugarCommerce\Network\Models\Visit;
 
 $visit = Visit::capture( Visit::hmac( wp_salt( 'auth' ) ), TrustedProxies::cloudflare(), Visit::CLOUDFLARE_COUNTRY );
 
@@ -386,7 +386,7 @@ API that is down or out of quota costs one visitor a timeout, not every
 visitor), and reading the HTTP API's answer.
 
 ```php
-use SugarCommerce\Network\Remote\Response;
+use SugarCommerce\Network\Models\Remote\Response;
 use SugarCommerce\Network\Remote\Service;
 
 final class Acme extends Service {
@@ -423,13 +423,15 @@ the family's one asset resolver.
 
 ## Layout
 
-Each class a consumer calls is at the top of `src/`. Folders hold what belongs
+Each service a consumer calls is at the top of `src/`. Folders hold what belongs
 to one of them: `Country/` (the sources a country is read from), `Email/` (the
 address's parts and the lists it is checked against), `Referrer/` (the source
 tables, first-touch attribution and icons), `Remote/` (the base for a
 third-party API client) and `UserAgent/` (the agent tables). A class with more
 than one job keeps one trait per job in `src/Traits/<Class>/`: `IP`,
-`Referrer`, `UserAgent` and `AcceptLanguage`.
+`Referrer`, `UserAgent` and `AcceptLanguage`. `Models/` holds the data shapes and
+nothing that does work: a `Visit`, a `Country/Result` and the base
+`Remote/Response` a client's answers extend.
 
 ## Security
 

@@ -10,7 +10,7 @@
 
 declare( strict_types=1 );
 
-namespace SugarCommerce\Network\Remote;
+namespace SugarCommerce\Network\Models\Remote;
 
 /**
  * Class Response

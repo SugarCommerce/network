@@ -9,7 +9,7 @@
 
 declare( strict_types=1 );
 
-namespace SugarCommerce\Network\Country;
+namespace SugarCommerce\Network\Models\Country;
 
 /**
  * Result of a country-resolution attempt.
