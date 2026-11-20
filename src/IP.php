@@ -333,22 +333,42 @@ class IP {
 	 * @return bool False for anything else, and for what is not an address.
 	 */
 	public static function is_public( string $ip ): bool {
+		$ip = self::carried( $ip );
+
+		return null !== $ip && ! self::is_private( $ip ) && ! Range::contains_any( self::NON_PUBLIC, $ip );
+	}
+
+	/**
+	 * The address a packet really goes to: an IPv6 address that carries an
+	 * IPv4 one -- IPv4-mapped (`::ffff:0:0/96`), NAT64 (`64:ff9b::/96`),
+	 * 6to4 (`2002::/16`) -- as the IPv4 address it carries; any other
+	 * address in its standard spelling.
+	 *
+	 * What a rule about where a request may go has to judge, or
+	 * `64:ff9b::a9fe:a9fe` is a harmless-looking 169.254.169.254.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string $ip An address, in any spelling.
+	 *
+	 * @return string|null The address, or null when it is not one.
+	 */
+	public static function carried( string $ip ): ?string {
 		$packed = self::pack( $ip );
 
 		if ( null === $packed ) {
-			return false;
+			return null;
 		}
 
-		// The IPv4 address a NAT64 or 6to4 address carries. pack() has
-		// already reduced an IPv4-mapped one to the four bytes it holds.
+		// pack() has already reduced an IPv4-mapped one to its four bytes.
 		if ( 16 === strlen( $packed ) && str_starts_with( $packed, "\x00\x64\xff\x9b" . str_repeat( "\x00", 8 ) ) ) {
 			$packed = substr( $packed, 12, 4 );
 		} elseif ( 16 === strlen( $packed ) && str_starts_with( $packed, "\x20\x02" ) ) {
 			$packed = substr( $packed, 2, 4 );
 		}
 
-		$ip = (string) inet_ntop( $packed );
+		$ip = inet_ntop( $packed );
 
-		return ! self::is_private( $ip ) && ! Range::contains_any( self::NON_PUBLIC, $ip );
+		return false === $ip ? null : $ip;
 	}
 }

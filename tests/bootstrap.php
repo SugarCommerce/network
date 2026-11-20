@@ -444,6 +444,7 @@ if ( ! function_exists( 'wp_date' ) ) {
 
 require_once dirname( __DIR__ ) . '/vendor/autoload.php';
 require_once __DIR__ . '/Remote/stubs.php';
+require_once __DIR__ . '/Remote/safe-url-stubs.php';
 
 /*
  * The query-string helpers below are copied verbatim from WordPress core

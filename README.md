@@ -32,6 +32,7 @@ keeping the person.
 * Serve the visitor's language from `Accept-Language`, or the one they picked
 * Know the web server, PHP's limits, the disk and whether this is the live site before an upload, an import or a payment
 * Build a client for a keyed third-party API with a cache, a failure memory and one way of reading answers
+* Post to or get an address somebody typed in without it reaching inside the server's network
 
 ## Installation
 
@@ -421,13 +422,50 @@ options table to be found by name.
 `Referrer\Icons` finds its pictures' URL with `SugarCommerce\Plugin\Assets`,
 the family's one asset resolver.
 
+## Asking an address somebody typed in
+
+`Remote\SafeUrl` is the family's one guard for a request to an address a site
+owner typed in -- a webhook endpoint, a licence store, a storage endpoint.
+The server can reach `169.254.169.254` (the cloud's credentials), `10.x` and
+loopback; nobody else can, so an unguarded address field lets anyone who can
+fill it in ask there.
+
+```php
+use SugarCommerce\Network\Remote\SafeUrl;
+
+$safe = new SafeUrl();                               // http or https, public addresses only
+$safe = new SafeUrl( https_only: true );             // a licence store
+$safe = new SafeUrl( allow_private: true );          // MinIO on the LAN, a development setup
+$safe = new SafeUrl( https_only: true, own_host: true ); // a store that may be this site
+
+$why      = $safe->refuse( $url );                   // null when it may be asked; a reason for a log otherwise
+$why      = $safe->malformed( $url );                // the same, without DNS: what a settings screen says on save
+$response = $safe->post( $url, [ 'body' => $json ] );
+$response = $safe->get( $url, [], 2 );               // follow up to two redirects, each checked again
+
+SafeUrl::is_metadata_host( '169.254.169.254:80' );   // true: no DNS, for a host typed on its own
+```
+
+Before every request, and every redirect hop:
+
+* http or https (https only when asked), no username or password, and a plain host -- nothing two parsers read differently, no `%2e`, no raw Unicode, no `2852039166` or `0xa9fea9fe`.
+* Every address the name resolves to, A and AAAA, must be public (`IP::is_public()`): one private answer among public ones is a rebinding attempt.
+* A metadata service, link-local, `0.0.0.0/8` and `::` are refused whatever is allowed -- by name, literal, or an IPv6 address carrying one.
+* The connection is pinned to the address that was checked (curl's `CURLOPT_RESOLVE`), so a second DNS answer cannot move it.
+* No redirects unless asked for.
+
+`allow_private`, `own_host` and core's `http_request_host_is_external` filter
+each let a private address through; none of them reaches a metadata or
+link-local address. A request goes out through core's `wp_safe_remote_*()`,
+or the plain call when private addresses are allowed (core's would refuse them).
+
 ## Layout
 
 Each service a consumer calls is at the top of `src/`. Folders hold what belongs
 to one of them: `Country/` (the sources a country is read from), `Email/` (the
 address's parts and the lists it is checked against), `Referrer/` (the source
 tables, first-touch attribution and icons), `Remote/` (the base for a
-third-party API client) and `UserAgent/` (the agent tables). A class with more
+third-party API client, and the guard for an address somebody typed in) and `UserAgent/` (the agent tables). A class with more
 than one job keeps one trait per job in `src/Traits/<Class>/`: `IP`,
 `Referrer`, `UserAgent` and `AcceptLanguage`. `Models/` holds the data shapes and
 nothing that does work: a `Visit`, a `Country/Result` and the base
@@ -443,6 +481,7 @@ nothing that does work: a `Visit`, a `Country/Result` and the base
 * UTM tags are cut to letters, digits and a little punctuation, 60 characters, and a click ID's value is never kept.
 * A first-touch cookie is size-capped, checked as JSON before it is decoded, cleaned field by field on every read, and never readable by script.
 * A user agent is capped at 512 characters and `Accept-Language` at 1,000 bytes and 50 entries before any pattern runs.
+* `Remote\SafeUrl` refuses an address that resolves anywhere private (every A and AAAA answer), pins the connection to the checked address, re-checks every redirect, and never reaches a metadata service or link-local address whatever is allowed.
 * A domain longer than DNS allows is no domain, so taking an address's domain apart costs nothing however long it is.
 * A blocked domain matches with or without a trailing dot.
 * An address is hashed with a key, never a plain hash, and the key is refused when empty.
