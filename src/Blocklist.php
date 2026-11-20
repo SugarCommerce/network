@@ -139,7 +139,9 @@ final class Blocklist {
 	public function keys( ?string $ip, ?string $email = null ): array {
 		$keys = [ self::IP => $this->ip( (string) $ip ) ];
 
-		$plain = strtolower( trim( (string) $email ) );
+		// A trailing dot is the same domain to DNS, and pattern() stores
+		// none: left on, it stepped round every domain entry.
+		$plain = rtrim( strtolower( trim( (string) $email ) ), '.' );
 		$at    = strrpos( $plain, '@' );
 
 		if ( false !== $at && $at > 0 && $at < strlen( $plain ) - 1 ) {

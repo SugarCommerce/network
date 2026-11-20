@@ -158,4 +158,18 @@ final class BlocklistTest extends TestCase {
 		);
 		$this->assertSame( '', $this->rules()->pattern( Blocklist::EMAIL, 'pat(x)@spam.example' ), 'but cannot be stored' );
 	}
+
+	/**
+	 * A blocked domain cannot be stepped round by spelling it another way
+	 * that still reaches it: a trailing dot is the same domain to DNS,
+	 * and pattern() stores the domain without one.
+	 */
+	public function test_a_domain_spelt_with_a_trailing_dot_is_still_its_domain(): void {
+		$rules  = $this->rules();
+		$stored = $rules->pattern( Blocklist::DOMAIN, '@spam.example' );
+
+		$this->assertSame( $stored, $rules->keys( null, 'pat@spam.example.' )['email_domain'] );
+		$this->assertSame( $stored, $rules->keys( null, 'pat@Spam.Example..' )['email_domain'] );
+		$this->assertArrayNotHasKey( 'email_domain', $rules->keys( null, 'pat@.' ) );
+	}
 }
