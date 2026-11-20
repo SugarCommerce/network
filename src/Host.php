@@ -327,6 +327,13 @@ final class Host {
 			$value = substr( $value, $at + 1 );
 		}
 
+		// Longer than DNS allows is no domain, and cut off here because each
+		// parent and ending copies the rest of the name: the work grows with
+		// the square of the length, and the value is often a visitor's.
+		if ( strlen( trim( $value, '.' ) ) > 253 ) {
+			return [];
+		}
+
 		return array_values( array_filter( explode( '.', $value ), 'strlen' ) );
 	}
 

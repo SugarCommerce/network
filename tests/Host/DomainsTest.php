@@ -88,6 +88,28 @@ final class DomainsTest extends TestCase {
 	}
 
 	/**
+	 * A domain longer than DNS allows is no domain.
+	 *
+	 * Each parent and ending is a copy of the rest of the name, so the work
+	 * grows with the square of its length: a 40 KB address typed at a
+	 * checkout was 40,000 strings, 400 MB and seconds of CPU, and twice
+	 * that was past PHP's memory limit.
+	 */
+	public function test_a_name_longer_than_dns_allows_is_taken_apart_into_nothing(): void {
+		$long = 'pat@' . str_repeat( 'a.', 130 ) . 'example';
+
+		$this->assertSame( [], Host::parents( $long ) );
+		$this->assertSame( [], Host::suffixes( $long ) );
+
+		// 253 characters is still a name.
+		$longest = 'pat@' . str_repeat( 'a.', 123 ) . 'example';
+
+		$this->assertSame( 253, strlen( $longest ) - 4 );
+		$this->assertCount( 123, Host::parents( $longest ) );
+		$this->assertCount( 123, Host::suffixes( $longest ) );
+	}
+
+	/**
 	 * Every ending short of the whole domain, shortest first.
 	 */
 	public function test_suffixes(): void {
