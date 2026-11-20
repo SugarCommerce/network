@@ -28,21 +28,25 @@ namespace SugarCommerce\Network\Country\Sources;
 final class Fastly extends HeaderSource {
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return 'fastly';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return 'high';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_header(): string {
 		return 'HTTP_FASTLY_CLIENT_COUNTRY';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_required_signatures(): array {
 		return [
 			'HTTP_FASTLY_FF',

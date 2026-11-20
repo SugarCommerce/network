@@ -26,7 +26,7 @@ final class Government {
 	/**
 	 * Government domain patterns.
 	 */
-	public const PATTERNS = [
+	public const array PATTERNS = [
 		// Generic
 		'.gov',
 		'.mil',

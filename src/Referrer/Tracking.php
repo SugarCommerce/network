@@ -34,7 +34,7 @@ class Tracking {
 	 * @since 1.0.0
 	 * @var array
 	 */
-	public const PARAMS = [
+	public const array PARAMS = [
 
 		// Google Ads & Analytics.
 		'gclid',
@@ -167,7 +167,7 @@ class Tracking {
 	 * @since 1.0.0
 	 * @var array
 	 */
-	public const PREFIXES = [
+	public const array PREFIXES = [
 		'utm_',      // Google, and the de facto standard.
 		'pk_',       // Piwik.
 		'mtm_',      // Matomo.

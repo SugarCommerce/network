@@ -38,7 +38,7 @@ class Email implements JsonSerializable, Stringable {
 	/**
 	 * The standard anonymized email placeholder.
 	 */
-	public const ANONYMIZED_PLACEHOLDER = 'deleted@site.invalid';
+	public const string ANONYMIZED_PLACEHOLDER = 'deleted@site.invalid';
 
 	use Core;
 	use Detection;

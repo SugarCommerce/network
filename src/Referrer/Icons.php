@@ -51,7 +51,7 @@ final class Icons {
 	 * @since 1.2.0
 	 * @var string
 	 */
-	public const DIRECT = 'direct';
+	public const string DIRECT = 'direct';
 
 	/**
 	 * The picture for an email source with no mark of its own.
@@ -59,7 +59,7 @@ final class Icons {
 	 * @since 1.2.0
 	 * @var string
 	 */
-	public const EMAIL = 'email';
+	public const string EMAIL = 'email';
 
 	/**
 	 * The picture for every other source with no mark of its own.
@@ -67,7 +67,7 @@ final class Icons {
 	 * @since 1.2.0
 	 * @var string
 	 */
-	public const WEBSITE = 'website';
+	public const string WEBSITE = 'website';
 
 	/**
 	 * Which file each named source has, without its extension.
@@ -80,7 +80,7 @@ final class Icons {
 	 * @since 1.2.0
 	 * @var array<string, string> Source => file name.
 	 */
-	public const FILES = [
+	public const array FILES = [
 		'Baidu'         => 'baidu',
 		'Bandcamp'      => 'bandcamp',
 		'Behance'       => 'behance',
@@ -161,7 +161,7 @@ final class Icons {
 	 * @since 1.2.0
 	 * @var array<string, string> Source => hex colour, lower case.
 	 */
-	public const COLORS = [
+	public const array COLORS = [
 		'Baidu'         => '#2932e1',
 		'Bandcamp'      => '#408294',
 		'Behance'       => '#1769ff',

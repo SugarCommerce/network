@@ -56,14 +56,14 @@ final class AcceptLanguage {
 	 *
 	 * @var int
 	 */
-	public const MAX_LENGTH = 1000;
+	public const int MAX_LENGTH = 1000;
 
 	/**
 	 * The most entries read from one header.
 	 *
 	 * @var int
 	 */
-	public const MAX_ENTRIES = 50;
+	public const int MAX_ENTRIES = 50;
 
 	/**
 	 * Languages written right to left.
@@ -73,7 +73,7 @@ final class AcceptLanguage {
 	 *
 	 * @var array<int, string>
 	 */
-	private const RTL_LANGUAGES = [
+	private const array RTL_LANGUAGES = [
 		'ar',  // Arabic.
 		'he',  // Hebrew.
 		'iw',  // Hebrew, the withdrawn code some systems still send.
@@ -98,7 +98,7 @@ final class AcceptLanguage {
 	 *
 	 * @var array<int, string>
 	 */
-	private const RTL_SCRIPTS = [ 'Arab', 'Hebr', 'Thaa', 'Syrc', 'Nkoo', 'Adlm', 'Rohg', 'Mand', 'Samr' ];
+	private const array RTL_SCRIPTS = [ 'Arab', 'Hebr', 'Thaa', 'Syrc', 'Nkoo', 'Adlm', 'Rohg', 'Mand', 'Samr' ];
 
 	/**
 	 * Languages' names in themselves, by tag.
@@ -109,7 +109,7 @@ final class AcceptLanguage {
 	 *
 	 * @var array<string, string>
 	 */
-	private const ENDONYMS = [
+	private const array ENDONYMS = [
 		'af'      => 'Afrikaans',
 		'ar'      => 'العربية',
 		'bg'      => 'Български',

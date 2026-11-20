@@ -27,7 +27,7 @@ final class Providers {
 	/**
 	 * Common free email provider domains.
 	 */
-	public const COMMON = [
+	public const array COMMON = [
 		'gmail.com',
 		'yahoo.com',
 		'hotmail.com',
@@ -44,7 +44,7 @@ final class Providers {
 	/**
 	 * Email providers that support subaddressing (plus addressing).
 	 */
-	public const SUBADDRESS = [
+	public const array SUBADDRESS = [
 		'gmail.com',
 		'googlemail.com',
 		'yahoo.com',

@@ -54,12 +54,12 @@ final class TrustedProxies {
 	/**
 	 * The header every proxy appends to.
 	 */
-	public const FORWARDED_FOR = 'X-Forwarded-For';
+	public const string FORWARDED_FOR = 'X-Forwarded-For';
 
 	/**
 	 * The header Cloudflare puts the visitor's address in.
 	 */
-	public const CF_CONNECTING_IP = 'CF-Connecting-IP';
+	public const string CF_CONNECTING_IP = 'CF-Connecting-IP';
 
 	/**
 	 * This machine and private networks: RFC 1918 and RFC 4193.
@@ -69,7 +69,7 @@ final class TrustedProxies {
 	 * only `fd00::/8`, the half that is assigned today: neither half is
 	 * routed on the internet.
 	 */
-	public const LOCAL = [
+	public const array LOCAL = [
 		'127.0.0.0/8',
 		'::1/128',
 		'10.0.0.0/8',
@@ -88,7 +88,7 @@ final class TrustedProxies {
 	 * fresh list to {@see self::cloudflare()} rather than relying on this
 	 * one for ever.
 	 */
-	public const CLOUDFLARE = [
+	public const array CLOUDFLARE = [
 		'173.245.48.0/20',
 		'103.21.244.0/22',
 		'103.22.200.0/22',

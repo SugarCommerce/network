@@ -26,7 +26,7 @@ final class Roles {
 	/**
 	 * Role-based email prefixes.
 	 */
-	public const PREFIXES = [
+	public const array PREFIXES = [
 		'admin',
 		'administrator',
 		'info',

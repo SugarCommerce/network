@@ -28,16 +28,19 @@ namespace SugarCommerce\Network\Country\Sources;
 final class ServerGeoIP extends HeaderSource {
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return 'server_geoip';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return 'medium';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_header(): string {
 		return 'GEOIP_COUNTRY_CODE';
 	}

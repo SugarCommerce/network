@@ -30,7 +30,7 @@ abstract class Response {
 	 *
 	 * @param array $data The decoded answer.
 	 */
-	public function __construct( protected array $data ) {}
+	public function __construct( protected readonly array $data ) {}
 
 	/**
 	 * Everything the service said.

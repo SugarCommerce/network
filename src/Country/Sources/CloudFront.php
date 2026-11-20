@@ -28,16 +28,19 @@ namespace SugarCommerce\Network\Country\Sources;
 final class CloudFront extends HeaderSource {
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return 'cloudfront';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return 'high';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_header(): string {
 		return 'HTTP_CLOUDFRONT_VIEWER_COUNTRY';
 	}

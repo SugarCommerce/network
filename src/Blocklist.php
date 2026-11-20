@@ -54,22 +54,22 @@ final class Blocklist {
 	/**
 	 * An entry for one IP address.
 	 */
-	public const IP = 'ip';
+	public const string IP = 'ip';
 
 	/**
 	 * An entry for one email address.
 	 */
-	public const EMAIL = 'email';
+	public const string EMAIL = 'email';
 
 	/**
 	 * An entry for every address at one domain.
 	 */
-	public const DOMAIN = 'email_domain';
+	public const string DOMAIN = 'email_domain';
 
 	/**
 	 * Every type, in the order keys() checks them.
 	 */
-	public const TYPES = [ self::IP, self::EMAIL, self::DOMAIN ];
+	public const array TYPES = [ self::IP, self::EMAIL, self::DOMAIN ];
 
 	/**
 	 * An address to its stored form.

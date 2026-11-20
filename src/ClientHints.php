@@ -50,7 +50,7 @@ final readonly class ClientHints {
 	 * Each hint you request is more fingerprinting surface, so ask only
 	 * for what you will actually use.
 	 */
-	public const ACCEPT_CH = 'Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Arch';
+	public const string ACCEPT_CH = 'Sec-CH-UA-Platform-Version, Sec-CH-UA-Model, Sec-CH-UA-Full-Version-List, Sec-CH-UA-Arch';
 
 	/**
 	 * Most brand entries {@see self::brands()} returns.
@@ -60,7 +60,7 @@ final readonly class ClientHints {
 	 *
 	 * @since 1.0.0
 	 */
-	public const MAX_BRANDS = 8;
+	public const int MAX_BRANDS = 8;
 
 	/**
 	 * Brands that name a browser more precisely than "Chromium" or
@@ -69,7 +69,7 @@ final readonly class ClientHints {
 	 * Every Chromium browser lists "Chromium" as well as itself, so the
 	 * first of these that is present is the browser.
 	 */
-	private const SPECIFIC_BRANDS = array(
+	private const array SPECIFIC_BRANDS = array(
 		'Brave',
 		'Microsoft Edge',
 		'Opera',

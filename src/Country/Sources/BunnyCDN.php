@@ -23,16 +23,19 @@ namespace SugarCommerce\Network\Country\Sources;
 final class BunnyCDN extends HeaderSource {
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return 'bunnycdn';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return 'high';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_header(): string {
 		return 'HTTP_CDN_LOOPCOUNTRY';
 	}

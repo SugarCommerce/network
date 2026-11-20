@@ -26,7 +26,7 @@ final class Typos {
 	/**
 	 * Common domain typos mapped to their corrections.
 	 */
-	public const CORRECTIONS = [
+	public const array CORRECTIONS = [
 		// Gmail typos
 		'gmial.com'      => 'gmail.com',
 		'gmali.com'      => 'gmail.com',

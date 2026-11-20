@@ -42,28 +42,28 @@ final class Environment {
 	 *
 	 * @var string
 	 */
-	public const LOCAL = 'local';
+	public const string LOCAL = 'local';
 
 	/**
 	 * A development site.
 	 *
 	 * @var string
 	 */
-	public const DEVELOPMENT = 'development';
+	public const string DEVELOPMENT = 'development';
 
 	/**
 	 * A staging copy.
 	 *
 	 * @var string
 	 */
-	public const STAGING = 'staging';
+	public const string STAGING = 'staging';
 
 	/**
 	 * The live site.
 	 *
 	 * @var string
 	 */
-	public const PRODUCTION = 'production';
+	public const string PRODUCTION = 'production';
 
 	/**
 	 * Hosts that are local by name: wordpress-develop's and the old
@@ -71,7 +71,7 @@ final class Environment {
 	 *
 	 * @var array<int, string>
 	 */
-	private const LOCAL_HOSTS = [
+	private const array LOCAL_HOSTS = [
 		'localhost.localdomain',
 		'local.wordpress.test',
 		'local.wordpress-trunk.test',

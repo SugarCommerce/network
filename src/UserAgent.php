@@ -48,12 +48,12 @@ final readonly class UserAgent {
 	 *
 	 * @since 2.1.0
 	 */
-	public const MAX_LENGTH = 512;
+	public const int MAX_LENGTH = 512;
 
 	/**
 	 * Phone-shaped devices.
 	 */
-	private const MOBILE_PATTERN = '/iPhone|iPod|Android.*Mobile|Windows Phone|BlackBerry|Opera Mini|IEMobile/i';
+	private const string MOBILE_PATTERN = '/iPhone|iPod|Android.*Mobile|Windows Phone|BlackBerry|Opera Mini|IEMobile/i';
 
 	/**
 	 * Tablet-shaped devices.
@@ -61,7 +61,7 @@ final readonly class UserAgent {
 	 * An Android tablet is identified by the ABSENCE of "Mobile", which
 	 * is one of the less helpful decisions in the platform.
 	 */
-	private const TABLET_PATTERN = '/iPad|Android(?!.*Mobile)|Tablet|Kindle|Silk\/|PlayBook/i';
+	private const string TABLET_PATTERN = '/iPad|Android(?!.*Mobile)|Tablet|Kindle|Silk\/|PlayBook/i';
 
 	/* ─── Reading the request ───────────────────────────────────────── */
 

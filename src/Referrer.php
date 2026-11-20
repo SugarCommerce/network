@@ -52,7 +52,7 @@ class Referrer {
 	 * @since 1.1.0
 	 * @var string[]
 	 */
-	public const CHANNELS = [ 'search', 'social', 'email', 'ai', 'paid', 'campaign', 'referral', 'direct' ];
+	public const array CHANNELS = [ 'search', 'social', 'email', 'ai', 'paid', 'campaign', 'referral', 'direct' ];
 
 	/**
 	 * The longest referrer accepted.
@@ -62,7 +62,7 @@ class Referrer {
 	 * @since 1.1.0
 	 * @var int
 	 */
-	public const MAX_URL_LENGTH = 2048;
+	public const int MAX_URL_LENGTH = 2048;
 
 	/**
 	 * The longest tag kept.
@@ -72,7 +72,7 @@ class Referrer {
 	 * @since 1.1.0
 	 * @var int
 	 */
-	public const TAG_MAX = 60;
+	public const int TAG_MAX = 60;
 
 	/**
 	 * The longest landing path kept.
@@ -80,7 +80,7 @@ class Referrer {
 	 * @since 1.1.0
 	 * @var int
 	 */
-	public const LANDING_MAX = 120;
+	public const int LANDING_MAX = 120;
 
 	/**
 	 * Two-label public suffixes, where the registered domain is the third
@@ -95,7 +95,7 @@ class Referrer {
 	 *
 	 * @var string[]
 	 */
-	protected const COMPOUND_SUFFIXES = [
+	protected const array COMPOUND_SUFFIXES = [
 		'co.uk',
 		'org.uk',
 		'me.uk',
@@ -167,7 +167,7 @@ class Referrer {
 	 * @since 1.1.0
 	 * @var array<string, string> Name => identifier.
 	 */
-	protected const LEGACY_SLUGS = [
+	protected const array LEGACY_SLUGS = [
 		'X'       => 'twitter',
 		'You.com' => 'you',
 	];
@@ -182,7 +182,7 @@ class Referrer {
 	 * @since 1.1.0
 	 * @var array<string, string> Old => current.
 	 */
-	protected const RENAMED_SLUGS = [
+	protected const array RENAMED_SLUGS = [
 		'searchgpt' => 'chatgpt',
 	];
 

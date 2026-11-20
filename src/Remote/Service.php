@@ -476,7 +476,7 @@ abstract class Service {
 		return [
 			'status' => (int) wp_remote_retrieve_response_code( $response ),
 			'body'   => $body,
-			'data'   => json_decode( $body, true ),
+			'data'   => json_validate( $body ) ? json_decode( $body, true ) : null,
 		];
 	}
 

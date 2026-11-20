@@ -27,16 +27,19 @@ namespace SugarCommerce\Network\Country\Sources;
 final class Generic extends HeaderSource {
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return 'generic';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return 'low';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_header(): string {
 		return 'HTTP_X_COUNTRY_CODE';
 	}

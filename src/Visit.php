@@ -46,7 +46,7 @@ final class Visit {
 	/**
 	 * The header Cloudflare puts the visitor's country in.
 	 */
-	public const CLOUDFLARE_COUNTRY = 'CF-IPCountry';
+	public const string CLOUDFLARE_COUNTRY = 'CF-IPCountry';
 
 	/**
 	 * Longest device summary kept, in characters.
@@ -54,7 +54,7 @@ final class Visit {
 	 * {@see UserAgent::describe()} is short for anything real; a version
 	 * number padded to fill a column is cut here.
 	 */
-	public const DEVICE_LENGTH = 80;
+	public const int DEVICE_LENGTH = 80;
 
 	/**
 	 * Describe a visit. Normally made by {@see self::capture()}; public so

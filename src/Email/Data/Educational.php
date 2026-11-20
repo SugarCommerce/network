@@ -32,7 +32,7 @@ final class Educational {
 	 * - .sch.xx = Schools (primary/secondary education)
 	 * - .k12.xx = K-12 education (US-style naming)
 	 */
-	public const PATTERNS = [
+	public const array PATTERNS = [
 		// United States
 		// Uses .edu directly
 

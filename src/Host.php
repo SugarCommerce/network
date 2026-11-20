@@ -52,7 +52,7 @@ final class Host {
 	/**
 	 * One label of a host name.
 	 */
-	private const LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
+	private const string LABEL = '[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?';
 
 	/**
 	 * A host, or an address, without its port.

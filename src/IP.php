@@ -42,7 +42,7 @@ class IP {
 	 * trusted proxy — see {@see IP::get()}. They are ordinary request
 	 * headers, so anyone can send them.
 	 */
-	private const FORWARDED_HEADERS = [
+	private const array FORWARDED_HEADERS = [
 		'CF-Connecting-IP',    // Cloudflare
 		'X-Real-IP',           // Nginx proxy
 		'X-Forwarded-For',     // Standard proxy chain
@@ -62,7 +62,7 @@ class IP {
 	 * blocks, segment routing, local-use NAT64, unique local, link-local,
 	 * the retired site-local block and multicast. See {@see self::is_public()}.
 	 */
-	private const NON_PUBLIC = [
+	private const array NON_PUBLIC = [
 		'0.0.0.0/8',
 		'100.64.0.0/10',
 		'192.0.0.0/24',

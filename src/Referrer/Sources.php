@@ -43,7 +43,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var string
 	 */
-	private const TLD = '(?:[a-z]{2,3}|(?:co|com|net|org|ne|or|ac)\.[a-z]{2})';
+	private const string TLD = '(?:[a-z]{2,3}|(?:co|com|net|org|ne|or|ac)\.[a-z]{2})';
 
 	/**
 	 * Webmail, checked first.
@@ -55,7 +55,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var array<int, array{0: string, 1: string}> Matcher, name.
 	 */
-	public const WEBMAIL = [
+	public const array WEBMAIL = [
 		[ 'mail.google.com', 'Gmail' ],
 		[ 'outlook.live.com', 'Outlook' ],
 		[ 'outlook.office.com', 'Outlook' ],
@@ -85,7 +85,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var array<int, array{0: string, 1: string}> Matcher, name.
 	 */
-	public const AI_ASSISTANTS = [
+	public const array AI_ASSISTANTS = [
 		[ 'chatgpt.com', 'ChatGPT' ],
 		[ 'chat.openai.com', 'ChatGPT' ],
 		[ 'claude.ai', 'Claude' ],
@@ -121,7 +121,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var array<int, array{0: string, 1: string, 2: string}> Matcher, name, query parameter.
 	 */
-	public const SEARCH_ENGINES = [
+	public const array SEARCH_ENGINES = [
 		[ '/^(?:www\.)?google\.' . self::TLD . '$/D', 'Google', 'q' ],
 		[ 'news.google.com', 'Google News', '' ],
 		[ 'bing.com', 'Bing', 'q' ],
@@ -160,7 +160,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var array<int, array{0: string, 1: string}> Matcher, name.
 	 */
-	public const SOCIAL_NETWORKS = [
+	public const array SOCIAL_NETWORKS = [
 		[ 'facebook.com', 'Facebook' ],
 		[ 'fb.com', 'Facebook' ],
 		[ 'fb.me', 'Facebook' ],
@@ -250,7 +250,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var string[]
 	 */
-	public const IGNORED_HOSTS = [
+	public const array IGNORED_HOSTS = [
 		'stripe.com',
 		'paypal.com',
 		'paddle.com',
@@ -268,7 +268,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var array<string, array{0: string, 1: string}> Package => channel, name.
 	 */
-	public const ANDROID_APPS = [
+	public const array ANDROID_APPS = [
 		'com.google.android.googlequicksearchbox' => [ 'search', 'Google' ],
 		'com.google.android.gm'                   => [ 'email', 'Gmail' ],
 		'com.microsoft.office.outlook'            => [ 'email', 'Outlook' ],
@@ -305,7 +305,7 @@ final class Sources {
 	 * @since 1.1.0
 	 * @var array<string, array{0: string, 1: string}> App => channel, name.
 	 */
-	public const IN_APP_SOURCES = [
+	public const array IN_APP_SOURCES = [
 		'Naver' => [ 'search', 'Naver' ],
 	];
 }

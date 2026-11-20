@@ -22,16 +22,16 @@ namespace SugarCommerce\Network\Country;
  *
  * @since 1.0.0
  */
-final class Result {
+final readonly class Result {
 
 	/** @var string */
-	private $country;
+	private string $country;
 
 	/** @var string */
-	private $source;
+	private string $source;
 
 	/** @var string */
-	private $confidence;
+	private string $confidence;
 
 	/**
 	 * @param string $country    Two-letter ISO-3166 alpha-2, or empty on miss.

@@ -34,7 +34,7 @@ final class Campaigns {
 	 * @since 1.1.0
 	 * @var array<string, string> Medium => channel.
 	 */
-	public const MEDIUMS = [
+	public const array MEDIUMS = [
 		'cpc'            => 'paid',
 		'ppc'            => 'paid',
 		'paid'           => 'paid',
@@ -74,7 +74,7 @@ final class Campaigns {
 	 * @since 1.1.0
 	 * @var array<string, array{0: string, 1: string}> Source, lower case => channel, name.
 	 */
-	public const UTM_SOURCES = [
+	public const array UTM_SOURCES = [
 		'tiktok'     => [ 'social', 'TikTok' ],
 		'tt'         => [ 'social', 'TikTok' ],
 		'facebook'   => [ 'social', 'Facebook' ],
@@ -135,7 +135,7 @@ final class Campaigns {
 	 * @since 1.1.0
 	 * @var array<int, array{0: string, 1: string, 2: string}> Parameter, channel, network.
 	 */
-	public const CLICK_IDS = [
+	public const array CLICK_IDS = [
 		[ 'gclid', 'paid', 'Google Ads' ],
 		[ 'gbraid', 'paid', 'Google Ads' ],
 		[ 'wbraid', 'paid', 'Google Ads' ],

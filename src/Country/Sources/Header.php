@@ -77,21 +77,25 @@ final class Header extends HeaderSource {
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return $this->name;
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return $this->confidence;
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_header(): string {
 		return $this->key;
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_sentinels(): array {
 		return [ 'XX' ];
 	}

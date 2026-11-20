@@ -26,14 +26,14 @@ final class Military {
 	/**
 	 * Military TLDs.
 	 */
-	public const TLDS = [
+	public const array TLDS = [
 		'mil',
 	];
 
 	/**
 	 * Known military domain patterns by country.
 	 */
-	public const DOMAINS = [
+	public const array DOMAINS = [
 		// United States
 		'army.mil',
 		'navy.mil',

@@ -27,21 +27,25 @@ namespace SugarCommerce\Network\Country\Sources;
 final class Cloudflare extends HeaderSource {
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return 'cloudflare';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return 'high';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_header(): string {
 		return 'HTTP_CF_IPCOUNTRY';
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_required_signatures(): array {
 		return [
 			'HTTP_CF_RAY',
@@ -51,6 +55,7 @@ final class Cloudflare extends HeaderSource {
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	protected function get_sentinels(): array {
 		// CF returns "XX" when geo is unknown and "T1" for Tor
 		// exits. The base class's strlen===2 + ctype_alpha

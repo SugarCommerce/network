@@ -46,16 +46,19 @@ final class Callback implements Source {
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_name(): string {
 		return $this->name;
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function get_confidence(): string {
 		return $this->confidence;
 	}
 
 	/** @inheritDoc */
+	#[\Override]
 	public function resolve( array $server ): ?string {
 		$result = ( $this->resolver )( $server );
 

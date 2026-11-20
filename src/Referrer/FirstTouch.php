@@ -74,7 +74,7 @@ class FirstTouch {
 	 * @since 1.2.0
 	 * @var array<string, int>
 	 */
-	public const ALL_FIELDS = [
+	public const array ALL_FIELDS = [
 		'source'   => 100,
 		'medium'   => 100,
 		'campaign' => 150,
@@ -92,7 +92,7 @@ class FirstTouch {
 	 * @since 1.2.0
 	 * @var string[]
 	 */
-	public const DEFAULT_FIELDS = [ 'source', 'medium', 'campaign', 'referrer', 'landing' ];
+	public const array DEFAULT_FIELDS = [ 'source', 'medium', 'campaign', 'referrer', 'landing' ];
 
 	/**
 	 * The fields that are typed by whoever made a link, and so are cut to
@@ -102,7 +102,7 @@ class FirstTouch {
 	 * @since 1.2.0
 	 * @var string[]
 	 */
-	public const TAG_FIELDS = [ 'source', 'medium', 'campaign', 'term', 'content' ];
+	public const array TAG_FIELDS = [ 'source', 'medium', 'campaign', 'term', 'content' ];
 
 	/**
 	 * How long a first visit is remembered by default: 30 days.
@@ -110,7 +110,7 @@ class FirstTouch {
 	 * @since 1.2.0
 	 * @var int
 	 */
-	public const LIFETIME = 2592000;
+	public const int LIFETIME = 2592000;
 
 	/**
 	 * The longest stored payload that is parsed.
@@ -121,7 +121,7 @@ class FirstTouch {
 	 * @since 1.2.0
 	 * @var int
 	 */
-	public const MAX_STORED = 2048;
+	public const int MAX_STORED = 2048;
 
 	/**
 	 * The cookie's name.
@@ -446,7 +446,9 @@ class FirstTouch {
 	 * @return array<string, string>
 	 */
 	public function decode( string $stored ): array {
-		if ( '' === $stored || strlen( $stored ) > self::MAX_STORED ) {
+		// Checked before it is decoded: a cookie is the visitor's to write,
+		// and what is not JSON is turned away without building anything.
+		if ( '' === $stored || strlen( $stored ) > self::MAX_STORED || ! json_validate( $stored ) ) {
 			return [];
 		}
 

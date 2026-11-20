@@ -88,6 +88,7 @@ abstract class HeaderSource implements Source {
 	/**
 	 * @inheritDoc
 	 */
+	#[\Override]
 	public function resolve( array $server ): ?string {
 		$value = Server::value( $server, $this->get_header() );
 
