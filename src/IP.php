@@ -53,8 +53,11 @@ class IP {
 	];
 
 	/**
-	 * Ranges that are not the public internet, which PHP's private and
-	 * reserved flags let through.
+	 * Ranges that are not the public internet.
+	 *
+	 * Private, loopback and link-local are named here as well as in PHP's
+	 * private and reserved flags, whose meaning has moved between PHP
+	 * versions: the SSRF checks built on is_public() should not.
 	 *
 	 * Carrier-grade NAT, the IETF protocol and documentation blocks,
 	 * benchmarking, 6to4 relay anycast, multicast and class E for IPv4; for
@@ -67,10 +70,15 @@ class IP {
 	 */
 	private const array NON_PUBLIC = [
 		'0.0.0.0/8',
+		'10.0.0.0/8',
 		'100.64.0.0/10',
+		'127.0.0.0/8',
+		'169.254.0.0/16',
+		'172.16.0.0/12',
 		'192.0.0.0/24',
 		'192.0.2.0/24',
 		'192.88.99.0/24',
+		'192.168.0.0/16',
 		'198.18.0.0/15',
 		'198.51.100.0/24',
 		'203.0.113.0/24',

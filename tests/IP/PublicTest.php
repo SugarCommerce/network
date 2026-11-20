@@ -20,7 +20,11 @@ final class PublicTest extends TestCase {
 
 	/**
 	 * Every one of these reaches something that is not the public
-	 * internet, and PHP's flags call each of them public.
+	 * internet: the blocks PHP's flags call public, the ones they do not,
+	 * and the other spellings of them. A spelling inet_aton() reads but
+	 * an IP literal is not (`0177.0.0.1`, `2130706433`, `127.1`) is not an
+	 * address here; a resolver that turns one into 127.0.0.1 hands back
+	 * an address this then refuses.
 	 *
 	 * @param string $ip An address.
 	 */
@@ -64,6 +68,26 @@ final class PublicTest extends TestCase {
 			'IPv6 docs, new'    => [ '3fff::1' ],
 			'segment routing'   => [ '5f00::1' ],
 			'site-local'        => [ 'fec0::1' ],
+			'RFC 1918, 172'     => [ '172.16.0.1' ],
+			'RFC 1918, 192'     => [ '192.168.1.1' ],
+			'cloud metadata'    => [ '169.254.169.254' ],
+			'this host'         => [ '0.0.0.0' ],
+			'broadcast'         => [ '255.255.255.255' ],
+			'carrier NAT, top'  => [ '100.127.255.255' ],
+			'mapped metadata'   => [ '::ffff:169.254.169.254' ],
+			'mapped, hex'       => [ '::ffff:7f00:1' ],
+			'mapped, long'      => [ '0:0:0:0:0:ffff:7f00:1' ],
+			'mapped, bracketed' => [ '[::ffff:127.0.0.1]' ],
+			'v4-compatible lo'  => [ '::127.0.0.1' ],
+			'6to4 metadata'     => [ '2002:a9fe:a9fe::1' ],
+			'Teredo, real'      => [ '2001:0:4136:e378:8000:63bf:3fff:fdd2' ],
+			'link-local, zone'  => [ 'fe80::1%eth0' ],
+			'loopback, padded'  => [ ' 127.0.0.1 ' ],
+			'octal loopback'    => [ '0177.0.0.1' ],
+			'hex loopback'      => [ '0x7f.0.0.1' ],
+			'decimal loopback'  => [ '2130706433' ],
+			'short loopback'    => [ '127.1' ],
+			'zero-padded'       => [ '127.000.000.001' ],
 			'not an address'    => [ 'nonsense' ],
 			'empty'             => [ '' ],
 		];
