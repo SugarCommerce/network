@@ -2,8 +2,7 @@
 
 Who a WordPress request is from: the visitor's real IP, their country, their
 language, their browser or bot, where they came from, and the email address
-they gave -- and what the site runs on: the web server, PHP's limits, the disk
-and whether this is the live site.
+they gave -- and the web server the site runs on.
 
 ## What it does
 
@@ -30,7 +29,7 @@ keeping the person.
 * Ask the questions an email address raises: same person, role mailbox, typo, disposable `+tag`
 * Keep a visit for a log as keyed hashes and a network, and block by IP, email or domain
 * Serve the visitor's language from `Accept-Language`, or the one they picked
-* Know the web server, PHP's limits, the disk and whether this is the live site before an upload, an import or a payment
+* Know the web server: nginx or Apache, its modules, X-Sendfile
 * Build a client for a keyed third-party API with a cache, a failure memory and one way of reading answers
 * Post to or get an address somebody typed in without it reaching inside the server's network
 
@@ -328,12 +327,9 @@ give a select's options (`$as_options` for `value`/`label` pairs); the list
 is the same as conditions' `Options\Request::get_languages()`, and the two
 should stay in step.
 
-## The server and the site
+## The web server
 
 ```php
-use SugarCommerce\Network\Disk;
-use SugarCommerce\Network\Environment;
-use SugarCommerce\Network\Php;
 use SugarCommerce\Network\Server;
 
 Server::software();                 // "nginx/1.27.0"
@@ -341,17 +337,11 @@ Server::is_nginx();                 // Flywheel, which Local runs, counts
 Server::supports_htaccess();        // Apache with mod_rewrite seen
 Server::has_xsendfile();            // Apache with mod_xsendfile, LiteSpeed; nginx when the filter says so
 Server::port();                     // 1-65535, else 443 or 80
-
-Php::has_memory( '256M' );          // still free under the limit
-Php::missing_extensions( [ 'intl', 'gd' ] );
-Php::has_function( 'set_time_limit' ); // not switched off by the host
-
-Disk::space();                      // [ 'total', 'free', 'used', 'percent' ] for the site's disk
-Disk::has_space( '1G', $dir );
-
-Environment::type();                // "local", "development", "staging", "production"
-Environment::is_production();       // exactly one of the four is true
 ```
+
+PHP's limits, the disk and whether this is the live site are
+`sugarcommerce/site-health`'s `Server\Php`, `Server\Disk` and
+`Server\Environment`: what a status check reports.
 
 Every `Server` method takes the same optional `$server` as the rest of the
 library. On nginx, `X-Accel-Redirect` needs an `internal` location PHP cannot
@@ -360,15 +350,6 @@ see, so say when it is set up:
 ```php
 add_filter( 'sugarcommerce_nginx_xsendfile', '__return_true' );
 ```
-
-`Environment` asks WordPress first: `WP_ENVIRONMENT_TYPE` is the site owner
-saying what the site is, and is believed over any guess -- production
-included. Only a site that never said is guessed at: a local address
-(loopback, a private address, `*.test`, `*.local`, `*.localhost`,
-`*.example`, `*.invalid` -- not `*.dev`, which is a real public ending), then
-a `staging`, `stage`, `test` or `demo` label, then `WP_ENV`, `ENVIRONMENT`
-or `APP_ENV`, and `WP_DEBUG` last. `Environment::is_local_host( $host )` is
-the address test on its own.
 
 Whether a request came through Cloudflare is `( new Cloudflare() )->is_active()`,
 which asks who connected rather than trusting a header anyone can send.

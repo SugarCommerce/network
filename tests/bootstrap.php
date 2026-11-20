@@ -704,30 +704,6 @@ if ( ! function_exists( 'get_home_url' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wp_get_environment_type' ) ) {
-	/**
-	 * Core's, without its static cache (core skips the cache under its own
-	 * test suite too).
-	 *
-	 * @return string
-	 */
-	function wp_get_environment_type() {
-		$approved = array( 'local', 'development', 'staging', 'production' );
-		$current  = '';
-
-		$wp_env = getenv( 'WP_ENVIRONMENT_TYPE' );
-		if ( false !== $wp_env ) {
-			$current = $wp_env;
-		}
-
-		if ( defined( 'WP_ENVIRONMENT_TYPE' ) && WP_ENVIRONMENT_TYPE ) {
-			$current = WP_ENVIRONMENT_TYPE;
-		}
-
-		return in_array( $current, $approved, true ) ? $current : 'production';
-	}
-}
-
 if ( ! function_exists( 'apache_get_modules' ) ) {
 	/**
 	 * Apache's module list. False stands for PHP not running inside
@@ -740,33 +716,9 @@ if ( ! function_exists( 'apache_get_modules' ) ) {
 	}
 }
 
-if ( ! function_exists( 'wp_convert_hr_to_bytes' ) ) {
-	/**
-	 * Core's, copied.
-	 *
-	 * @param string $value A PHP.ini size.
-	 *
-	 * @return int
-	 */
-	function wp_convert_hr_to_bytes( $value ) {
-		$value = strtolower( trim( $value ) );
-		$bytes = (int) $value;
-
-		if ( str_contains( $value, 'g' ) ) {
-			$bytes *= 1024 * 1024 * 1024;
-		} elseif ( str_contains( $value, 'm' ) ) {
-			$bytes *= 1024 * 1024;
-		} elseif ( str_contains( $value, 'k' ) ) {
-			$bytes *= 1024;
-		}
-
-		return min( $bytes, PHP_INT_MAX );
-	}
-}
-
 /**
  * Forget the site, the module list and the environment variables the
- * Environment and Server tests set.
+ * Server tests set.
  *
  * @return void
  */

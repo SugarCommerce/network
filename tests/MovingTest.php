@@ -10,12 +10,9 @@ declare( strict_types=1 );
 namespace SugarCommerce\Network\Tests;
 
 use SugarCommerce\Network\AcceptLanguage;
-use SugarCommerce\Network\Disk;
 use SugarCommerce\Network\Email;
-use SugarCommerce\Network\Environment;
 use SugarCommerce\Network\IP;
 use SugarCommerce\Network\Referrer;
-use SugarCommerce\Network\Php;
 use SugarCommerce\Network\Request;
 use SugarCommerce\Network\Server;
 use PHPUnit\Framework\TestCase;
@@ -165,10 +162,7 @@ final class MovingTest extends TestCase {
 	 */
 	public function test_the_server_utils_names(): void {
 		$renamed = [
-			Server::class      => [ 'software', 'address', 'port', 'is_apache', 'is_nginx', 'is_litespeed', 'is_iis', 'supports_htaccess', 'has_mod_rewrite', 'supports_url_rewriting', 'supports_gzip', 'has_xsendfile', 'apache_modules', 'has_apache_module' ],
-			Php::class         => [ 'version', 'meets_version', 'memory_limit', 'max_execution_time', 'upload_max_filesize', 'post_max_size', 'max_input_vars', 'has_extension', 'missing_extensions', 'has_function', 'uploads_enabled', 'url_fopen_enabled', 'has_memory' ],
-			Disk::class        => [ 'space', 'has_space', 'is_windows', 'is_linux', 'is_macos' ],
-			Environment::class => [ 'type', 'is_local', 'is_staging', 'is_development', 'is_production' ],
+			Server::class => [ 'software', 'address', 'port', 'is_apache', 'is_nginx', 'is_litespeed', 'is_iis', 'supports_htaccess', 'has_mod_rewrite', 'supports_url_rewriting', 'supports_gzip', 'has_xsendfile', 'apache_modules', 'has_apache_module' ],
 		];
 
 		foreach ( $renamed as $class => $methods ) {
@@ -176,11 +170,6 @@ final class MovingTest extends TestCase {
 				$this->assertTrue( method_exists( $class, $method ), $class . '::' . $method . '() is missing.' );
 			}
 		}
-
-		$this->assertSame(
-			[ 'local', 'development', 'staging', 'production' ],
-			[ Environment::LOCAL, Environment::DEVELOPMENT, Environment::STAGING, Environment::PRODUCTION ]
-		);
 
 		$_SERVER['SERVER_SOFTWARE'] = 'nginx/1.27.0';
 		$this->assertSame( 'nginx/1.27.0', Server::software() );

@@ -24,10 +24,6 @@ One folder per part of the library:
 - **Email** -- parsing, detection and matching.
 - **AcceptLanguage** -- the header read to the standard, BCP 47 casing, the
   cap, right-to-left scripts, `pick()` and `endonym()`.
-- **Environment** -- which kind of site this is, WordPress asked first, and
-  `PhpTest` for PHP's limits and the disk. The tests that need a start-up
-  setting (`disable_functions`, `post_max_size`) or a constant (`WP_DEBUG`)
-  run a PHP of their own.
 - **Visit**, **Blocklist**, **Server** -- the record a log keeps, a
   blocklist's rules, how `$_SERVER` is read, and the web server.
 - **Remote** -- the cached third-party API base through a made-up service:
