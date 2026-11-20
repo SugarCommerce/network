@@ -36,16 +36,19 @@ class IP {
 	use Visitor;
 
 	/**
-	 * Forwarding headers get() reads, in order of priority.
+	 * Forwarding headers get() reads from any trusted proxy, in order of
+	 * priority.
 	 *
 	 * These are ONLY consulted when the connection itself arrived from a
 	 * trusted proxy — see {@see IP::get()}. They are ordinary request
-	 * headers, so anyone can send them.
+	 * headers, so anyone can send them. X-Forwarded-For is first because
+	 * every proxy appends to it; a proxy that does only that passes the
+	 * other two on from the visitor. CF-Connecting-IP is read only from
+	 * Cloudflare's own addresses.
 	 */
 	private const array FORWARDED_HEADERS = [
-		'CF-Connecting-IP',    // Cloudflare
-		'X-Real-IP',           // Nginx proxy
 		'X-Forwarded-For',     // Standard proxy chain
+		'X-Real-IP',           // Nginx proxy
 		'Client-IP',           // Legacy proxy
 	];
 

@@ -13,6 +13,7 @@ declare( strict_types=1 );
 namespace SugarCommerce\Network\Traits\IP;
 
 use SugarCommerce\Network\ClientIp;
+use SugarCommerce\Network\Range;
 use SugarCommerce\Network\Server;
 use SugarCommerce\Network\TrustedProxies;
 
@@ -45,8 +46,10 @@ trait Visitor {
 	 * it reads the chain with ClientIp's walker and differs from
 	 * ClientIp::resolve() only in the policy it has always had --
 	 *
-	 *  - four headers are tried in turn (CF-Connecting-IP, X-Real-IP,
-	 *    X-Forwarded-For, Client-IP), from any trusted proxy;
+	 *  - three headers are tried in turn from any trusted proxy
+	 *    (X-Forwarded-For, X-Real-IP, Client-IP), and CF-Connecting-IP
+	 *    before them when the connection is one of Cloudflare's own
+	 *    addresses -- see {@see self::forwarding_headers()};
 	 *  - an entry that is not an address is skipped, where resolve()
 	 *    stops reading at it;
 	 *  - a private, loopback or reserved address is null unless
@@ -68,6 +71,8 @@ trait Visitor {
 	 * @since  1.1.0 Forwarding headers now require a trusted proxy.
 	 * @since  1.1.1 Added $allow_private.
 	 * @since  1.3.0 Reads the chain with {@see ClientIp::walk()}.
+	 * @since  1.5.0 CF-Connecting-IP only from Cloudflare's addresses, and
+	 *               X-Forwarded-For before X-Real-IP and Client-IP.
 	 */
 	public static function get( bool $allow_private = false ): ?string {
 		$remote = self::server( 'REMOTE_ADDR' );
@@ -75,7 +80,7 @@ trait Visitor {
 		$trust  = self::trust();
 
 		if ( null !== $remote && $trust->trusts( $remote ) ) {
-			foreach ( $trust->headers as $header ) {
+			foreach ( self::forwarding_headers( $remote, $trust ) as $header ) {
 				$value = self::server( Server::key( $header ) );
 
 				if ( '' === $value ) {
@@ -111,6 +116,40 @@ trait Visitor {
 	}
 
 	/**
+	 * The headers get() reads from a trusted connection, in order.
+	 *
+	 * Which header a visitor cannot write depends on which proxy the
+	 * connection came from. Cloudflare overwrites CF-Connecting-IP, so it
+	 * is read first -- but only when the connection is from Cloudflare's
+	 * own addresses. A proxy of the site's own (nginx, HAProxy, a load
+	 * balancer on a private address) never writes it and passes on
+	 * whatever the visitor sent, which made it the visitor's choice of
+	 * address on every site behind one.
+	 *
+	 * Then X-Forwarded-For, the header every proxy appends to, read from
+	 * the right. X-Real-IP and Client-IP come after it: a proxy that only
+	 * appends to X-Forwarded-For -- Apache's, HAProxy's, most load
+	 * balancers' -- passes them through untouched, so read first they
+	 * were the visitor's to write too.
+	 *
+	 * @since 1.5.0
+	 *
+	 * @param string         $remote The connection's address, a trusted proxy.
+	 * @param TrustedProxies $trust  What get() trusts.
+	 *
+	 * @return array<int, string>
+	 */
+	private static function forwarding_headers( string $remote, TrustedProxies $trust ): array {
+		$headers = $trust->headers;
+
+		if ( Range::contains_any( TrustedProxies::CLOUDFLARE, $remote ) ) {
+			array_unshift( $headers, TrustedProxies::CF_CONNECTING_IP );
+		}
+
+		return $headers;
+	}
+
+	/**
 	 * Whether an address is one of our own proxies.
 	 *
 	 * @param string $ip Address to check.
@@ -125,12 +164,18 @@ trait Visitor {
 	/**
 	 * What get() believes, as a TrustedProxies.
 	 *
-	 * The ranges of {@see self::trusted_proxies()}, and the four headers
-	 * get() has always read. Hand it to anything else that should trust
+	 * The ranges of {@see self::trusted_proxies()}, and the headers get()
+	 * reads from any of them. Hand it to anything else that should trust
 	 * what get() trusts: `new Cloudflare( IP::trust() )`.
+	 *
+	 * CF-Connecting-IP is not among the headers. The list mixes Cloudflare
+	 * with proxies of the site's own, which pass that header on from
+	 * whoever reached them -- the rule {@see TrustedProxies::and_also()}
+	 * keeps. get() reads it only from Cloudflare's own addresses.
 	 *
 	 * @return TrustedProxies
 	 * @since  1.3.0
+	 * @since  1.5.0 Without CF-Connecting-IP; X-Forwarded-For first.
 	 */
 	public static function trust(): TrustedProxies {
 		return TrustedProxies::none()->and_also( self::trusted_proxies() )->using_headers( self::FORWARDED_HEADERS );

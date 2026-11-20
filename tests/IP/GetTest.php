@@ -54,7 +54,8 @@ final class GetTest extends TestCase {
 			'a pre-seeded hop is not reached'         => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '6.6.6.6, 93.184.216.34' ], '93.184.216.34', '93.184.216.34' ],
 			'a port is dropped'                       => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '93.184.216.34:51234' ], '93.184.216.34', '93.184.216.34' ],
 			'bracketed ipv6 with a port'              => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '[2001:4860:4860::8888]:443' ], '2001:4860:4860::8888', '2001:4860:4860::8888' ],
-			'the headers are tried in order'          => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.1.1.1', 'HTTP_X_REAL_IP' => '9.9.9.9' ], '9.9.9.9', '9.9.9.9' ],
+			'forwarded-for before x-real-ip'          => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '1.1.1.1', 'HTTP_X_REAL_IP' => '9.9.9.9' ], '1.1.1.1', '1.1.1.1' ],
+			'x-real-ip without forwarded-for'         => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_REAL_IP' => '9.9.9.9' ], '9.9.9.9', '9.9.9.9' ],
 			'a direct public connection'              => [ [ 'REMOTE_ADDR' => '93.184.216.34' ], '93.184.216.34', '93.184.216.34' ],
 			'a private connection'                    => [ [ 'REMOTE_ADDR' => '127.0.0.1' ], null, '127.0.0.1' ],
 			'a docker bridge'                         => [ [ 'REMOTE_ADDR' => '172.17.0.1' ], null, '172.17.0.1' ],
@@ -65,7 +66,17 @@ final class GetTest extends TestCase {
 			'an entry that is not an address is skipped' => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '93.184.216.34, unknown, 10.0.0.5' ], '93.184.216.34', '93.184.216.34' ],
 			'every hop trusted: null, or client-most'    => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '192.168.1.50, 10.0.0.5' ], null, '192.168.1.50' ],
 			'an intranet client behind a local proxy'    => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '192.168.1.50' ], null, '192.168.1.50' ],
-			'a reserved client falls to the next header' => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_REAL_IP' => '169.254.1.1', 'HTTP_X_FORWARDED_FOR' => '93.184.216.34' ], '93.184.216.34', '169.254.1.1' ],
+			'a reserved client falls to the next header' => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_X_FORWARDED_FOR' => '169.254.1.1', 'HTTP_X_REAL_IP' => '93.184.216.34' ], '93.184.216.34', '169.254.1.1' ],
+
+			// A proxy of the site's own -- nginx, HAProxy, a load balancer on
+			// a private address -- appends to X-Forwarded-For and passes on
+			// the rest of what the visitor sent.
+			'a visitor\'s CF-Connecting-IP through a local proxy'  => [ [ 'REMOTE_ADDR' => '10.0.0.2', 'HTTP_CF_CONNECTING_IP' => '6.6.6.6', 'HTTP_X_FORWARDED_FOR' => '93.184.216.34' ], '93.184.216.34', '93.184.216.34' ],
+			'a visitor\'s CF-Connecting-IP alone, through a proxy' => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_CF_CONNECTING_IP' => '6.6.6.6' ], null, '127.0.0.1' ],
+			'a visitor\'s X-Real-IP through an appending proxy'    => [ [ 'REMOTE_ADDR' => '10.0.0.2', 'HTTP_X_REAL_IP' => '6.6.6.6', 'HTTP_X_FORWARDED_FOR' => '93.184.216.34' ], '93.184.216.34', '93.184.216.34' ],
+			'a visitor\'s Client-IP through an appending proxy'    => [ [ 'REMOTE_ADDR' => '10.0.0.2', 'HTTP_CLIENT_IP' => '6.6.6.6', 'HTTP_X_FORWARDED_FOR' => '93.184.216.34' ], '93.184.216.34', '93.184.216.34' ],
+			'cloudflare: its header before forwarded-for'          => [ [ 'REMOTE_ADDR' => '104.16.0.1', 'HTTP_CF_CONNECTING_IP' => '93.184.216.34', 'HTTP_X_FORWARDED_FOR' => '6.6.6.6' ], '93.184.216.34', '93.184.216.34' ],
+			'cloudflare in front of a local proxy'                 => [ [ 'REMOTE_ADDR' => '127.0.0.1', 'HTTP_CF_CONNECTING_IP' => '93.184.216.34', 'HTTP_X_FORWARDED_FOR' => '93.184.216.34, 104.16.0.1' ], '93.184.216.34', '93.184.216.34' ],
 		];
 	}
 
@@ -82,6 +93,15 @@ final class GetTest extends TestCase {
 
 		$this->assertSame( $strict, IP::get() );
 		$this->assertSame( $permissive, IP::get( true ) );
+	}
+
+	/**
+	 * What get() trusts, for anything else to trust: CF-Connecting-IP is
+	 * not among its headers, because the list mixes in proxies of the
+	 * site's own, which pass that header on from whoever reached them.
+	 */
+	public function test_trust_does_not_name_cloudflare_s_header(): void {
+		$this->assertSame( [ 'X-Forwarded-For', 'X-Real-IP', 'Client-IP' ], IP::trust()->headers );
 	}
 
 	/**
