@@ -163,7 +163,7 @@ final class ReadingTest extends TestCase {
 	 * The labels are in this library's text domain.
 	 */
 	public function test_the_labels_are_in_the_family_text_domain(): void {
-		$source = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/AcceptLanguage.php' );
+		$source = (string) file_get_contents( dirname( __DIR__, 2 ) . '/src/Traits/AcceptLanguage/Options.php' );
 
 		$this->assertStringNotContainsString( "'arraypress'", $source );
 		$this->assertStringContainsString( "__( 'English', 'sugarcommerce' )", $source );

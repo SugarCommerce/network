@@ -15,6 +15,10 @@ declare( strict_types=1 );
 
 namespace SugarCommerce\Network;
 
+use SugarCommerce\Network\Traits\AcceptLanguage\Matching;
+use SugarCommerce\Network\Traits\AcceptLanguage\Options;
+use SugarCommerce\Network\Traits\AcceptLanguage\Tags;
+
 /**
  * AcceptLanguage Class
  *
@@ -32,9 +36,17 @@ namespace SugarCommerce\Network;
  *     AcceptLanguage::is_rtl();
  *     AcceptLanguage::get_primary( $saved_server );
  *
+ * Reading the header is this class; choosing a language by it (Matching),
+ * language tags on their own (Tags) and the lists to choose from
+ * (Options) are traits, in src/Traits/AcceptLanguage/.
+ *
  * @since 1.0.0
  */
 final class AcceptLanguage {
+
+	use Matching;
+	use Options;
+	use Tags;
 
 	/**
 	 * The most of the header read, in bytes.
@@ -313,118 +325,6 @@ final class AcceptLanguage {
 	}
 
 	/**
-	 * Whether a language is accepted.
-	 *
-	 * A visitor who sent `en-GB` accepts English, and so `en-US`, unless
-	 * $exact asks for that tag and no other.
-	 *
-	 * @param string     $language The language: `en`, `en-US`.
-	 * @param bool       $exact    Only this exact tag.
-	 * @param array|null $server   `$_SERVER`, or a stand-in.
-	 *
-	 * @return bool
-	 */
-	public static function accepts( string $language, bool $exact = false, ?array $server = null ): bool {
-		$languages = self::parse( null, $server );
-		$language  = self::normalize( $language );
-
-		if ( '' === $language ) {
-			return false;
-		}
-
-		if ( isset( $languages[ $language ] ) ) {
-			return true;
-		}
-
-		if ( $exact ) {
-			return false;
-		}
-
-		$base = self::extract_language( $language );
-
-		foreach ( array_keys( $languages ) as $accepted ) {
-			if ( self::extract_language( (string) $accepted ) === $base ) {
-				return true;
-			}
-		}
-
-		return false;
-	}
-
-	/**
-	 * The quality the visitor gave a language.
-	 *
-	 * @param string     $language The language.
-	 * @param array|null $server   `$_SERVER`, or a stand-in.
-	 *
-	 * @return float|null Null when it was not offered: nought is a real
-	 *                    quality with a meaning of its own.
-	 */
-	public static function get_quality( string $language, ?array $server = null ): ?float {
-		return self::parse( null, $server )[ self::normalize( $language ) ] ?? null;
-	}
-
-	/**
-	 * The best of the languages a site has, for this visitor.
-	 *
-	 * An exact tag anywhere in the header beats a base-language match, so
-	 * a visitor sending `en-GB,en-US;q=0.9` gets `en-GB` over `en-US`.
-	 * Then `en-AU` is served by `en-GB` rather than the fallback. The
-	 * answer is the caller's own spelling of it.
-	 *
-	 * @param array<int, string> $available The languages there are.
-	 * @param string|null        $fallback  When nothing fits.
-	 * @param array|null         $server    `$_SERVER`, or a stand-in.
-	 *
-	 * @return string|null
-	 */
-	public static function get_best_match( array $available, ?string $fallback = null, ?array $server = null ): ?string {
-		return self::best( self::parse( null, $server ), $available ) ?? $fallback;
-	}
-
-	/**
-	 * The language to serve: what the visitor chose, else what their
-	 * browser asks for, else the fallback.
-	 *
-	 * A choice the visitor made -- `?lang=de` from a picker, the cookie
-	 * that remembers it, an account's setting -- beats the browser,
-	 * because someone who picked German on one page and got English on the
-	 * next would think the picker was broken. Each is matched as one tag
-	 * (`de-AT` is served by `de`); anything that is not a string, a tag or
-	 * on offer is skipped, so `$_GET` and `$_COOKIE` values can be handed
-	 * over as they come.
-	 *
-	 * @param array<array-key, mixed> $preferences Tags the visitor gave, most
-	 *                                             authoritative first.
-	 * @param array<int, string>      $available   The languages there are.
-	 * @param string|null             $fallback    When nothing fits.
-	 * @param array|null              $server      `$_SERVER`, or a stand-in.
-	 *
-	 * @return string|null
-	 */
-	public static function pick( array $preferences, array $available, ?string $fallback = null, ?array $server = null ): ?string {
-		foreach ( $preferences as $tag ) {
-			if ( ! is_string( $tag ) ) {
-				continue;
-			}
-
-			$tag = self::normalize( $tag );
-
-			if ( '' === $tag || '*' === $tag || ! self::is_tag( $tag ) ) {
-				continue;
-			}
-
-			$match = self::best( [ $tag => 1.0 ], $available );
-
-			if ( null !== $match ) {
-				return $match;
-			}
-		}
-
-		return self::get_best_match( $available, $fallback, $server );
-	}
-
-	/**
 	 * Whether the visitor's best-ranked language is written right to left.
 	 *
 	 * @param array|null $server `$_SERVER`, or a stand-in.
@@ -435,289 +335,6 @@ final class AcceptLanguage {
 		$primary = self::get_primary( $server );
 
 		return null !== $primary && self::is_rtl_language( $primary );
-	}
-
-	/**
-	 * Whether a language tag is written right to left.
-	 *
-	 * A script subtag decides when there is one: `az-Arab` is, `ku-Latn`
-	 * is not.
-	 *
-	 * @param string $code Any tag: `ar`, `fa-IR`, `pa-Arab`.
-	 *
-	 * @return bool
-	 */
-	public static function is_rtl_language( string $code ): bool {
-		$code = self::normalize( $code );
-
-		if ( '' === $code ) {
-			return false;
-		}
-
-		$script = self::subtags( $code )['script'];
-
-		if ( null !== $script ) {
-			return in_array( $script, self::RTL_SCRIPTS, true );
-		}
-
-		return in_array( self::extract_language( $code ), self::RTL_LANGUAGES, true );
-	}
-
-	/**
-	 * A tag in BCP 47's conventional case.
-	 *
-	 * Language lower, script title, region upper, the rest lower:
-	 * `ZH_hant_tw` is `zh-Hant-TW`, `es-419` stays, `en-us-POSIX` is
-	 * `en-US-posix`. An underscore is read as a hyphen.
-	 *
-	 * @param string $code The tag.
-	 *
-	 * @return string Empty for nothing.
-	 */
-	public static function normalize( string $code ): string {
-		$code = str_replace( '_', '-', trim( $code ) );
-
-		if ( '' === $code ) {
-			return '';
-		}
-
-		$parts  = explode( '-', $code );
-		$out    = [ strtolower( (string) array_shift( $parts ) ) ];
-		$script = false;
-		$region = false;
-		$tail   = false;
-
-		foreach ( $parts as $part ) {
-			$length = strlen( $part );
-
-			if ( $tail ) {
-				$out[] = strtolower( $part );
-				continue;
-			}
-
-			if ( 1 === $length ) {
-				// A singleton: an extension or private use, all lower case.
-				$tail  = true;
-				$out[] = strtolower( $part );
-			} elseif ( ! $script && ! $region && 3 === $length && ctype_alpha( $part ) ) {
-				// An extended language: `zh-yue`.
-				$out[] = strtolower( $part );
-			} elseif ( ! $script && ! $region && 4 === $length && ctype_alpha( $part ) ) {
-				$script = true;
-				$out[]  = ucfirst( strtolower( $part ) );
-			} elseif ( ! $region && ( ( 2 === $length && ctype_alpha( $part ) ) || ( 3 === $length && ctype_digit( $part ) ) ) ) {
-				$region = true;
-				$out[]  = strtoupper( $part );
-			} else {
-				$region = true;
-				$out[]  = strtolower( $part );
-			}
-		}
-
-		return implode( '-', $out );
-	}
-
-	/**
-	 * The language part of a tag: `en` from `en-US`.
-	 *
-	 * @param string $locale The tag.
-	 *
-	 * @return string
-	 */
-	public static function extract_language( string $locale ): string {
-		return strtolower( explode( '-', str_replace( '_', '-', $locale ) )[0] );
-	}
-
-	/**
-	 * The region part of a tag: `US` from `en-US`, `TW` from `zh-Hant-TW`.
-	 *
-	 * @param string $locale The tag.
-	 *
-	 * @return string|null Null when there is none; a script is not one.
-	 */
-	public static function extract_region( string $locale ): ?string {
-		return self::subtags( self::normalize( $locale ) )['region'];
-	}
-
-	/**
-	 * A language's name in itself: "Deutsch", "日本語", "Português (Brasil)".
-	 *
-	 * In itself, because the person looking for German in a language
-	 * picker is the person who cannot read the English word for it. The
-	 * table covers the common languages and the regional variants whose
-	 * names differ; anything else is asked of ext-intl when it is loaded,
-	 * then the base language's name, then the tag. Only a well-formed tag
-	 * is echoed back, so a tag from a query string cannot turn up on the
-	 * page as the "name" of a language.
-	 *
-	 * @param string $locale The tag, any case, `-` or `_`.
-	 *
-	 * @return string Empty for something that is not a tag.
-	 */
-	public static function endonym( string $locale ): string {
-		$tag = self::normalize( $locale );
-
-		if ( isset( self::ENDONYMS[ $tag ] ) ) {
-			return self::ENDONYMS[ $tag ];
-		}
-
-		if ( 1 !== preg_match( '/^[a-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$/D', $tag ) ) {
-			return '';
-		}
-
-		if ( class_exists( \Locale::class ) ) {
-			$icu  = str_replace( '-', '_', $tag );
-			$name = \Locale::getDisplayName( $icu, $icu );
-
-			// ICU answers a tag it does not know with the tag itself.
-			if ( is_string( $name ) && '' !== $name && strtolower( $name ) !== strtolower( $icu ) ) {
-				return mb_strtoupper( mb_substr( $name, 0, 1 ) ) . mb_substr( $name, 1 );
-			}
-		}
-
-		return self::ENDONYMS[ self::extract_language( $tag ) ] ?? $tag;
-	}
-
-	/**
-	 * Common languages and locales for a select.
-	 *
-	 * The same list as conditions' `Options\Request::get_languages()`;
-	 * keep the two in step.
-	 *
-	 * @param bool $as_options `[ [ 'value' => 'en', 'label' => 'English' ], ... ]`
-	 *                         rather than `[ 'en' => 'English' ]`.
-	 *
-	 * @return array
-	 */
-	public static function get_common_languages( bool $as_options = false ): array {
-		$languages = [
-			'en'    => __( 'English', 'sugarcommerce' ),
-			'en-US' => __( 'English (US)', 'sugarcommerce' ),
-			'en-GB' => __( 'English (UK)', 'sugarcommerce' ),
-			'es'    => __( 'Spanish', 'sugarcommerce' ),
-			'es-ES' => __( 'Spanish (Spain)', 'sugarcommerce' ),
-			'es-MX' => __( 'Spanish (Mexico)', 'sugarcommerce' ),
-			'fr'    => __( 'French', 'sugarcommerce' ),
-			'fr-FR' => __( 'French (France)', 'sugarcommerce' ),
-			'fr-CA' => __( 'French (Canada)', 'sugarcommerce' ),
-			'de'    => __( 'German', 'sugarcommerce' ),
-			'de-DE' => __( 'German (Germany)', 'sugarcommerce' ),
-			'de-AT' => __( 'German (Austria)', 'sugarcommerce' ),
-			'it'    => __( 'Italian', 'sugarcommerce' ),
-			'pt'    => __( 'Portuguese', 'sugarcommerce' ),
-			'pt-BR' => __( 'Portuguese (Brazil)', 'sugarcommerce' ),
-			'pt-PT' => __( 'Portuguese (Portugal)', 'sugarcommerce' ),
-			'nl'    => __( 'Dutch', 'sugarcommerce' ),
-			'ru'    => __( 'Russian', 'sugarcommerce' ),
-			'ja'    => __( 'Japanese', 'sugarcommerce' ),
-			'zh'    => __( 'Chinese', 'sugarcommerce' ),
-			'zh-CN' => __( 'Chinese (Simplified)', 'sugarcommerce' ),
-			'zh-TW' => __( 'Chinese (Traditional)', 'sugarcommerce' ),
-			'ko'    => __( 'Korean', 'sugarcommerce' ),
-			'ar'    => __( 'Arabic', 'sugarcommerce' ),
-			'hi'    => __( 'Hindi', 'sugarcommerce' ),
-			'tr'    => __( 'Turkish', 'sugarcommerce' ),
-			'pl'    => __( 'Polish', 'sugarcommerce' ),
-			'sv'    => __( 'Swedish', 'sugarcommerce' ),
-			'da'    => __( 'Danish', 'sugarcommerce' ),
-			'no'    => __( 'Norwegian', 'sugarcommerce' ),
-			'fi'    => __( 'Finnish', 'sugarcommerce' ),
-			'el'    => __( 'Greek', 'sugarcommerce' ),
-			'he'    => __( 'Hebrew', 'sugarcommerce' ),
-			'th'    => __( 'Thai', 'sugarcommerce' ),
-			'vi'    => __( 'Vietnamese', 'sugarcommerce' ),
-			'id'    => __( 'Indonesian', 'sugarcommerce' ),
-			'ms'    => __( 'Malay', 'sugarcommerce' ),
-			'cs'    => __( 'Czech', 'sugarcommerce' ),
-			'hu'    => __( 'Hungarian', 'sugarcommerce' ),
-			'ro'    => __( 'Romanian', 'sugarcommerce' ),
-			'uk'    => __( 'Ukrainian', 'sugarcommerce' ),
-		];
-
-		return $as_options ? self::to_options( $languages ) : $languages;
-	}
-
-	/**
-	 * Common languages without regions, for a select.
-	 *
-	 * @param bool $as_options `value`/`label` pairs rather than a map.
-	 *
-	 * @return array
-	 */
-	public static function get_base_languages( bool $as_options = false ): array {
-		$languages = [
-			'en' => __( 'English', 'sugarcommerce' ),
-			'es' => __( 'Spanish', 'sugarcommerce' ),
-			'fr' => __( 'French', 'sugarcommerce' ),
-			'de' => __( 'German', 'sugarcommerce' ),
-			'it' => __( 'Italian', 'sugarcommerce' ),
-			'pt' => __( 'Portuguese', 'sugarcommerce' ),
-			'nl' => __( 'Dutch', 'sugarcommerce' ),
-			'ru' => __( 'Russian', 'sugarcommerce' ),
-			'ja' => __( 'Japanese', 'sugarcommerce' ),
-			'zh' => __( 'Chinese', 'sugarcommerce' ),
-			'ko' => __( 'Korean', 'sugarcommerce' ),
-			'ar' => __( 'Arabic', 'sugarcommerce' ),
-			'hi' => __( 'Hindi', 'sugarcommerce' ),
-			'tr' => __( 'Turkish', 'sugarcommerce' ),
-			'pl' => __( 'Polish', 'sugarcommerce' ),
-			'sv' => __( 'Swedish', 'sugarcommerce' ),
-			'da' => __( 'Danish', 'sugarcommerce' ),
-			'no' => __( 'Norwegian', 'sugarcommerce' ),
-			'fi' => __( 'Finnish', 'sugarcommerce' ),
-			'el' => __( 'Greek', 'sugarcommerce' ),
-			'he' => __( 'Hebrew', 'sugarcommerce' ),
-			'th' => __( 'Thai', 'sugarcommerce' ),
-			'vi' => __( 'Vietnamese', 'sugarcommerce' ),
-			'id' => __( 'Indonesian', 'sugarcommerce' ),
-			'ms' => __( 'Malay', 'sugarcommerce' ),
-			'cs' => __( 'Czech', 'sugarcommerce' ),
-			'hu' => __( 'Hungarian', 'sugarcommerce' ),
-			'ro' => __( 'Romanian', 'sugarcommerce' ),
-			'uk' => __( 'Ukrainian', 'sugarcommerce' ),
-		];
-
-		return $as_options ? self::to_options( $languages ) : $languages;
-	}
-
-	/**
-	 * The best of $available for languages already parsed.
-	 *
-	 * An exact tag anywhere in the list first, then a base language.
-	 *
-	 * @param array<string, float> $accepted  Languages, best first.
-	 * @param array<int, string>   $available The languages there are.
-	 *
-	 * @return string|null The caller's own spelling, or null.
-	 */
-	private static function best( array $accepted, array $available ): ?string {
-		if ( [] === $accepted || [] === $available ) {
-			return null;
-		}
-
-		$offered = [];
-
-		foreach ( $available as $lang ) {
-			$offered[ self::normalize( (string) $lang ) ] = (string) $lang;
-		}
-
-		foreach ( array_keys( $accepted ) as $lang ) {
-			if ( isset( $offered[ $lang ] ) ) {
-				return $offered[ $lang ];
-			}
-		}
-
-		foreach ( array_keys( $accepted ) as $lang ) {
-			$base = self::extract_language( (string) $lang );
-
-			foreach ( $offered as $normalized => $original ) {
-				if ( self::extract_language( (string) $normalized ) === $base ) {
-					return $original;
-				}
-			}
-		}
-
-		return null;
 	}
 
 	/**
@@ -787,25 +404,5 @@ final class AcceptLanguage {
 	 */
 	private static function is_tag( string $tag ): bool {
 		return (bool) preg_match( '/^(?:\*|[a-z0-9]{1,8}(?:-[a-z0-9]{1,8})*)$/i', $tag );
-	}
-
-	/**
-	 * A map as `value`/`label` pairs.
-	 *
-	 * @param array<string, string> $items The map.
-	 *
-	 * @return array<int, array{value: string, label: string}>
-	 */
-	private static function to_options( array $items ): array {
-		$options = [];
-
-		foreach ( $items as $value => $label ) {
-			$options[] = [
-				'value' => (string) $value,
-				'label' => $label,
-			];
-		}
-
-		return $options;
 	}
 }
