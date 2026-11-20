@@ -72,6 +72,7 @@ use WP_Error;
  *     if ( null !== $safe->refuse( $url ) ) { … }         // why not, for a log
  *     $response = $safe->post( $url, [ 'body' => $json ] );
  *     $response = $safe->get( $url, [], 2 );              // follow up to two redirects
+ *     $response = $safe->request( 'PUT', $url, [ 'body' => $bytes ] );
  *
  * @since 1.3.0
  */
@@ -88,6 +89,12 @@ final class SafeUrl {
 	 * Statuses a get follows, when it follows any.
 	 */
 	private const array FOLLOWED_GET = [ 301, 302, 303, 307, 308 ];
+
+	/**
+	 * Statuses any other method follows, when it follows any: the two that
+	 * promise the same method and body at the new address.
+	 */
+	private const array FOLLOWED_OTHER = [ 307, 308 ];
 
 	/**
 	 * Names that are a cloud's metadata service, or no address at all.
@@ -239,6 +246,29 @@ final class SafeUrl {
 	}
 
 	/**
+	 * Any other method -- PUT, DELETE, HEAD -- held to the same checks.
+	 *
+	 * For a client that speaks a whole protocol to an address somebody typed
+	 * in: an S3-compatible store is PUT, GET, HEAD, POST and DELETE.
+	 *
+	 * @since 1.3.0
+	 *
+	 * @param string               $method    The method, any case.
+	 * @param string               $url       The address.
+	 * @param array<string, mixed> $args      As for wp_remote_request().
+	 *                                        `method` and `redirection` are
+	 *                                        replaced.
+	 * @param int                  $redirects Redirects to follow (307, 308
+	 *                                        for a method other than GET and
+	 *                                        POST), each checked.
+	 *
+	 * @return array|WP_Error The response, or why there is none.
+	 */
+	public function request( string $method, string $url, array $args = [], int $redirects = 0 ): array|WP_Error {
+		return $this->send( strtoupper( $method ), $url, $args, $redirects );
+	}
+
+	/**
 	 * Every address a name resolves to, A and AAAA. An IP literal is
 	 * itself.
 	 *
@@ -333,7 +363,7 @@ final class SafeUrl {
 	/**
 	 * Check, ask, and follow what is allowed to be followed.
 	 *
-	 * @param string               $method    GET or POST.
+	 * @param string               $method    The method, upper case.
 	 * @param string               $url       The address.
 	 * @param array<string, mixed> $args      As for wp_remote_request().
 	 * @param int                  $redirects Redirects to follow.
@@ -342,7 +372,11 @@ final class SafeUrl {
 	 */
 	private function send( string $method, string $url, array $args, int $redirects ): array|WP_Error {
 		$args['redirection'] = 0;
-		$followed            = 'POST' === $method ? self::FOLLOWED_POST : self::FOLLOWED_GET;
+		$followed            = match ( $method ) {
+			'POST'  => self::FOLLOWED_POST,
+			'GET'   => self::FOLLOWED_GET,
+			default => self::FOLLOWED_OTHER,
+		};
 
 		for ( $hop = 0; ; $hop++ ) {
 			[ $reason, $pin ] = $this->check( $url );
@@ -448,7 +482,7 @@ final class SafeUrl {
 	 * only public addresses are allowed; the plain one when private ones
 	 * are, since core's would refuse them after this let them through.
 	 *
-	 * @param string               $method GET or POST.
+	 * @param string               $method The method, upper case.
 	 * @param string               $url    The address.
 	 * @param array<string, mixed> $args   As for wp_remote_request().
 	 * @param string               $ip     The address that passed.
@@ -473,11 +507,15 @@ final class SafeUrl {
 		try {
 			if ( $this->allow_private ) {
 				$args['reject_unsafe_urls'] = false;
-
-				return 'POST' === $method ? wp_remote_post( $url, $args ) : wp_remote_get( $url, $args );
 			}
 
-			return 'POST' === $method ? wp_safe_remote_post( $url, $args ) : wp_safe_remote_get( $url, $args );
+			return match ( true ) {
+				'POST' === $method => $this->allow_private ? wp_remote_post( $url, $args ) : wp_safe_remote_post( $url, $args ),
+				'GET' === $method  => $this->allow_private ? wp_remote_get( $url, $args ) : wp_safe_remote_get( $url, $args ),
+				default            => $this->allow_private
+					? wp_remote_request( $url, [ 'method' => $method ] + $args )
+					: wp_safe_remote_request( $url, [ 'method' => $method ] + $args ),
+			};
 		} finally {
 			remove_action( 'http_api_curl', $pin, 10 );
 		}

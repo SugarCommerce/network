@@ -423,6 +423,7 @@ $why      = $safe->refuse( $url );                   // null when it may be aske
 $why      = $safe->malformed( $url );                // the same, without DNS: what a settings screen says on save
 $response = $safe->post( $url, [ 'body' => $json ] );
 $response = $safe->get( $url, [], 2 );               // follow up to two redirects, each checked again
+$response = $safe->request( 'PUT', $url, [ 'body' => $bytes ] ); // any other method: an S3-compatible store
 
 SafeUrl::is_metadata_host( '169.254.169.254:80' );   // true: no DNS, for a host typed on its own
 ```
@@ -433,7 +434,7 @@ Before every request, and every redirect hop:
 * Every address the name resolves to, A and AAAA, must be public (`IP::is_public()`): one private answer among public ones is a rebinding attempt.
 * A metadata service, link-local, `0.0.0.0/8` and `::` are refused whatever is allowed -- by name, literal, or an IPv6 address carrying one.
 * The connection is pinned to the address that was checked (curl's `CURLOPT_RESOLVE`), so a second DNS answer cannot move it.
-* No redirects unless asked for.
+* No redirects unless asked for -- and then a method other than GET and POST follows only a 307 or 308, which keep it.
 
 `allow_private`, `own_host` and core's `http_request_host_is_external` filter
 each let a private address through; none of them reaches a metadata or

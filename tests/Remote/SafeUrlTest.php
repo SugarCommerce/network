@@ -463,4 +463,61 @@ final class SafeUrlTest extends TestCase {
 		$this->assertSame( [ 'store.example:443:93.184.216.34' ], $GLOBALS['rs_requests'][1]['args']['pin'] );
 		$this->assertSame( [], array_values( $GLOBALS['ru_actions']['http_api_curl'] ?? [] ) );
 	}
+
+	/**
+	 * Any other method passes the same checks: a PUT inside the network is
+	 * never made, a DELETE to metadata never even with private allowed.
+	 */
+	public function test_another_method_is_checked_the_same(): void {
+		$guard = $this->guard( [ 'inside.example' => [ '10.1.2.3' ] ] );
+
+		$this->assertInstanceOf( WP_Error::class, $guard->request( 'PUT', 'https://inside.example/key', [ 'body' => 'x' ] ) );
+		$this->assertInstanceOf( WP_Error::class, $this->anywhere( [ 'allow_private' => true ] )->request( 'DELETE', 'http://169.254.169.254/latest/' ) );
+		$this->assertSame( [], $GLOBALS['rs_requests'] );
+	}
+
+	/**
+	 * Another method goes out as itself, through core's safe call unless
+	 * private addresses are allowed, pinned like a get or a post.
+	 */
+	public function test_another_method_goes_out_as_itself_and_pinned(): void {
+		$GLOBALS['rs_http'] = [ su_answer( 200 ), su_answer( 204 ) ];
+
+		$this->guard( [ 'store.example' => [ '93.184.216.34' ] ] )->request( 'put', 'https://store.example/key', [ 'body' => 'bytes', 'method' => 'GET' ] );
+		$this->guard( [ 'minio.lan' => [ '192.168.1.20' ] ], [ 'allow_private' => true ] )->request( 'DELETE', 'http://minio.lan:9000/key' );
+
+		$this->assertSame( [ 'PUT', 'DELETE' ], array_column( $GLOBALS['rs_requests'], 'method' ) );
+		$this->assertSame( 'bytes', $GLOBALS['rs_requests'][0]['args']['body'] );
+		$this->assertTrue( $GLOBALS['rs_requests'][0]['args']['safe'] );
+		$this->assertArrayNotHasKey( 'safe', $GLOBALS['rs_requests'][1]['args'] );
+		$this->assertFalse( $GLOBALS['rs_requests'][1]['args']['reject_unsafe_urls'] );
+
+		if ( function_exists( 'curl_init' ) ) {
+			$this->assertSame( [ 'store.example:443:93.184.216.34' ], $GLOBALS['rs_requests'][0]['args']['pin'] );
+			$this->assertSame( [ 'minio.lan:9000:192.168.1.20' ], $GLOBALS['rs_requests'][1]['args']['pin'] );
+		}
+	}
+
+	/**
+	 * Another method follows only a 307 or 308, which keep it, and checks the
+	 * hop: a 302 is the answer, and a 307 inside the network is refused.
+	 */
+	public function test_another_method_follows_only_what_keeps_it(): void {
+		$GLOBALS['rs_http'] = [ su_answer( 302, [ 'Location' => 'https://store.example/b' ] ) ];
+
+		$this->assertSame( 302, wp_remote_retrieve_response_code( $this->anywhere()->request( 'PUT', 'https://store.example/a', [], 3 ) ) );
+		$this->assertCount( 1, $GLOBALS['rs_requests'] );
+
+		rs_reset();
+		$GLOBALS['rs_http'] = [ su_answer( 307, [ 'Location' => 'https://store.example/b' ] ), su_answer( 200 ) ];
+
+		$this->assertSame( 200, wp_remote_retrieve_response_code( $this->anywhere()->request( 'PUT', 'https://store.example/a', [], 3 ) ) );
+		$this->assertSame( 'PUT', $GLOBALS['rs_requests'][1]['method'] );
+
+		rs_reset();
+		$GLOBALS['rs_http'] = [ su_answer( 308, [ 'Location' => 'http://10.0.0.5/' ] ) ];
+
+		$this->assertInstanceOf( WP_Error::class, $this->guard( [ 'store.example' => [ '93.184.216.34' ] ] )->request( 'PUT', 'https://store.example/a', [], 3 ) );
+		$this->assertCount( 1, $GLOBALS['rs_requests'] );
+	}
 }

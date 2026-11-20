@@ -44,7 +44,7 @@ namespace {
 	 * A request through core's safe variant, or the plain one: run the
 	 * `http_api_curl` actions on a real handle, then answer from the queue.
 	 *
-	 * @param string $method GET or POST.
+	 * @param string $method The method.
 	 * @param string $url    The address.
 	 * @param array  $args   The arguments.
 	 * @param bool   $safe   Whether it was core's safe variant.
@@ -60,8 +60,11 @@ namespace {
 			do_action( 'http_api_curl', $handle, $args, $url );
 		}
 
-		$args['safe'] = $safe;
-		$args['pin']  = $GLOBALS['su_pin'];
+		if ( $safe ) {
+			$args['safe'] = true;
+		}
+
+		$args['pin'] = $GLOBALS['su_pin'];
 
 		return rs_respond( $method, $url, $args );
 	}
@@ -103,6 +106,30 @@ namespace {
 		 */
 		function wp_safe_remote_get( $url, $args = [] ) {
 			return su_request( 'GET', $url, $args, true );
+		}
+	}
+
+	if ( ! function_exists( 'wp_safe_remote_request' ) ) {
+		/**
+		 * @param string $url  URL.
+		 * @param array  $args Arguments, `method` among them.
+		 *
+		 * @return array|WP_Error
+		 */
+		function wp_safe_remote_request( $url, $args = [] ) {
+			return su_request( (string) ( $args['method'] ?? 'GET' ), $url, $args, true );
+		}
+	}
+
+	if ( ! function_exists( 'wp_remote_request' ) ) {
+		/**
+		 * @param string $url  URL.
+		 * @param array  $args Arguments, `method` among them.
+		 *
+		 * @return array|WP_Error
+		 */
+		function wp_remote_request( $url, $args = [] ) {
+			return su_request( (string) ( $args['method'] ?? 'GET' ), $url, $args, false );
 		}
 	}
 
